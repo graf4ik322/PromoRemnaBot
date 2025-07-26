@@ -2,6 +2,37 @@
 
 Руководство по устранению проблем при запуске PromoRemnaBot через Docker.
 
+## 🤖 Проблемы функциональности бота
+
+### Ошибка: "Can't parse entities" или функционал не работает
+
+**Симптомы:**
+```
+Can't parse entities: can't find end of the entity starting at byte offset 333
+TelegramError: HTTP 400 Bad Request
+Bot functionality not working, buttons don't respond
+```
+
+**Причина:**
+Ошибки форматирования сообщений Telegram (смешанный Markdown/HTML, проблемные символы).
+
+**Решения:**
+```bash
+# 1. Обновите до последней версии (исправлено)
+git pull
+
+# 2. Перезапустите бота
+./docker-scripts/start-safe.sh --prod
+
+# 3. Проверьте логи на ошибки парсинга
+docker logs promo-remna-bot | grep -i "parse entities"
+
+# 4. Если проблема остается, проверьте конфигурацию
+./docker-scripts/diagnose.sh
+```
+
+**Детали исправления:** См. [TELEGRAM_FORMATTING_FIX.md](TELEGRAM_FORMATTING_FIX.md)
+
 ## 🐳 Docker Проблемы
 
 ### Ошибка: "Not supported URL scheme http+docker"

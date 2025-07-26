@@ -340,6 +340,16 @@ chmod 755 logs/
 ./docker-scripts/cleanup.sh
 ```
 
+**Функционал бота не работает:**
+```bash
+# Обновите до последней версии (исправлено)
+git pull
+./docker-scripts/start-safe.sh --prod
+
+# Проверьте отсутствие ошибок форматирования
+docker logs promo-remna-bot | grep -i "parse entities"
+```
+
 **Docker daemon не запущен:**
 ```bash
 sudo systemctl start docker
