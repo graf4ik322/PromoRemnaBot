@@ -255,7 +255,7 @@ chmod +x run_bot.sh
 
 ```bash
 # Просмотр логов бота
-tail -f bot.log
+tail -f logs/bot.log
 
 # Логи systemd
 sudo journalctl -u remnawave-bot -f
@@ -358,7 +358,7 @@ sudo swapon /swapfile
 
 При возникновении проблем:
 
-1. Проверьте логи: `tail -f bot.log`
+1. Проверьте логи: `tail -f logs/bot.log`
 2. Запустите тесты: `python3 test_bot.py`
 3. Проверьте статус службы: `sudo systemctl status remnawave-bot`
 4. Создайте issue в репозитории проекта

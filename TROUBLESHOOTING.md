@@ -165,6 +165,34 @@ REMNAWAVE_TOKEN=your_api_token_here
 ADMIN_USER_IDS=123456789,987654321
 ```
 
+### Ошибка: "Fatal error: [Errno 21] Is a directory"
+
+**Симптомы:**
+```
+Fatal error: [Errno 21] Is a directory: '/app/bot.log'
+```
+
+**Причина:**
+Docker создал директорию вместо файла лога из-за неправильного монтирования volume.
+
+**Решения:**
+```bash
+# 1. Обновите до последней версии (исправлено)
+git pull
+
+# 2. Удалите старые контейнеры и volumes
+docker-compose down -v
+
+# 3. Удалите директорию bot.log если она существует
+rm -rf bot.log
+
+# 4. Запустите заново
+./docker-scripts/start-safe.sh --prod
+
+# 5. Логи теперь в logs/bot.log
+tail -f logs/bot.log
+```
+
 ### Ошибка: "ValueError: invalid literal for int() with base 10"
 
 **Симптомы:**

@@ -246,7 +246,7 @@ remnawave-telegram-bot/
 
 ## Логирование
 
-Все действия бота логируются в файл `bot.log` и консоль. Уровень логирования настраивается через `LOG_LEVEL`.
+Все действия бота логируются в файл `logs/bot.log` и консоль. Уровень логирования настраивается через `LOG_LEVEL`.
 
 Примеры логов:
 ```
@@ -319,6 +319,17 @@ DEFAULT_INBOUND_IDS=1,2,3
 DEFAULT_INBOUND_IDS=b9811fcd-f20b-45c2-912a-fb21ab6c7664
 ```
 
+**Ошибка "Is a directory: bot.log":**
+```bash
+# Исправьте проблему с логированием
+./docker-scripts/cleanup.sh
+
+# Или вручную:
+docker-compose down -v
+rm -rf bot.log
+./docker-scripts/start-safe.sh --prod
+```
+
 **Docker daemon не запущен:**
 ```bash
 sudo systemctl start docker
@@ -340,7 +351,7 @@ newgrp docker
 
 При возникновении проблем:
 1. **Запустите диагностику:** `./docker-scripts/diagnose.sh`
-2. **Проверьте логи:** `docker logs promo-remna-bot`
+2. **Проверьте логи:** `docker logs promo-remna-bot` или `tail -f logs/bot.log`
 3. **См. руководство:** [TROUBLESHOOTING.md](TROUBLESHOOTING.md)
 4. **Проверьте конфигурацию в .env файле**
 5. **Создайте issue в репозитории проекта**

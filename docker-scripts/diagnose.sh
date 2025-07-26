@@ -196,6 +196,15 @@ check_common_issues() {
         echo -e "${YELLOW}May cause conflicts if app uses this port${NC}"
     fi
     
+    # Check for bot.log directory issue
+    if [ -d "bot.log" ]; then
+        echo -e "${RED}❌ bot.log exists as directory${NC}"
+        echo -e "${YELLOW}This will cause logging errors. Remove with: rm -rf bot.log${NC}"
+    elif [ -f "bot.log" ]; then
+        echo -e "${YELLOW}⚠️  Old bot.log file exists${NC}"
+        echo -e "${YELLOW}Logs are now in logs/bot.log directory${NC}"
+    fi
+    
     echo ""
 }
 

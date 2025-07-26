@@ -18,7 +18,6 @@ services:
     volumes:
       - ./subscription_files:/app/subscription_files
       - ./logs:/app/logs
-      - bot-logs:/app/bot.log
     
     # Network settings
     networks:
@@ -81,10 +80,6 @@ services:
           command: promo-remna-bot-prod
     networks:
       - remnawave-network
-
-volumes:
-  bot-logs:
-    driver: local
 
 networks:
   remnawave-network:

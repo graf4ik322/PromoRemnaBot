@@ -21,11 +21,15 @@ from bot_handlers import BotHandlers, WAITING_TAG, WAITING_COUNT
 # Configure logging
 def setup_logging():
     """Setup logging configuration"""
+    # Ensure logs directory exists
+    import os
+    os.makedirs('logs', exist_ok=True)
+    
     logging.basicConfig(
         format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
         level=getattr(logging, Config.LOG_LEVEL, logging.INFO),
         handlers=[
-            logging.FileHandler('bot.log'),
+            logging.FileHandler('logs/bot.log'),
             logging.StreamHandler(sys.stdout)
         ]
     )
