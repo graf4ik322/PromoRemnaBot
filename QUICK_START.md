@@ -19,8 +19,8 @@ sudo usermod -aG docker $USER
 
 ```bash
 # Клонирование репозитория
-git clone <repository-url>
-cd remnawave-telegram-bot
+git clone https://github.com/graf4ik322/PromoRemnaBot.git
+cd PromoRemnaBot
 
 # Настройка окружения
 cp .env.example .env
@@ -41,13 +41,13 @@ nano .env  # Отредактируйте настройки
 
 ```bash
 # Просмотр логов
-docker logs remnawave-telegram-bot -f
+docker logs promo-remna-bot -f
 
 # Статус контейнера
-docker ps | grep remnawave
+docker ps | grep promo-remna
 
 # Тестирование
-docker exec remnawave-telegram-bot python3 test_bot.py
+docker exec promo-remna-bot python3 test_bot.py
 ```
 
 ## ⚙️ Обязательные настройки .env
@@ -76,10 +76,10 @@ ADMIN_USER_IDS=123456789
 ./docker-scripts/stop.sh && ./docker-scripts/start.sh --prod
 
 # Просмотр логов
-docker logs remnawave-telegram-bot -f
+docker logs promo-remna-bot -f
 
 # Вход в контейнер
-docker exec -it remnawave-telegram-bot bash
+docker exec -it promo-remna-bot bash
 
 # Обновление
 git pull && ./docker-scripts/start.sh --prod
@@ -92,10 +92,10 @@ git pull && ./docker-scripts/start.sh --prod
 docker-compose ps
 
 # Использование ресурсов
-docker stats remnawave-telegram-bot
+docker stats promo-remna-bot
 
 # Health check
-docker inspect remnawave-telegram-bot | grep Health -A 5
+docker inspect promo-remna-bot | grep Health -A 5
 ```
 
 ## 🐞 Решение проблем
@@ -104,7 +104,7 @@ docker inspect remnawave-telegram-bot | grep Health -A 5
 
 ```bash
 # Проверьте логи
-docker logs remnawave-telegram-bot
+docker logs promo-remna-bot
 
 # Проверьте конфигурацию
 cat .env
@@ -120,14 +120,14 @@ curl -I https://your-panel.domain.com
 curl -s "https://api.telegram.org/bot<YOUR_TOKEN>/getMe" | jq
 
 # Тест подключения к Remnawave
-docker exec remnawave-telegram-bot curl -I https://your-panel.domain.com
+docker exec promo-remna-bot curl -I https://your-panel.domain.com
 ```
 
 ### Высокое потребление ресурсов
 
 ```bash
 # Мониторинг ресурсов
-docker stats --no-stream remnawave-telegram-bot
+docker stats --no-stream promo-remna-bot
 
 # Перезапуск с ограничениями
 # Отредактируйте docker-compose.yml, измените limits

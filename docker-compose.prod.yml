@@ -5,7 +5,7 @@ services:
     build: 
       context: .
       dockerfile: Dockerfile
-    container_name: remnawave-telegram-bot-prod
+    container_name: promo-remna-bot-prod
     restart: always
     
     # Environment variables
@@ -78,7 +78,7 @@ services:
       - WATCHTOWER_CLEANUP=true
       - WATCHTOWER_POLL_INTERVAL=86400  # Check daily
       - WATCHTOWER_INCLUDE_STOPPED=true
-    command: remnawave-telegram-bot-prod
+          command: promo-remna-bot-prod
     networks:
       - remnawave-network
 

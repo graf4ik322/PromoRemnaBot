@@ -100,7 +100,7 @@ show_status() {
     
     echo ""
     echo -e "${BLUE}📋 Container logs (last 10 lines):${NC}"
-    docker logs remnawave-telegram-bot --tail 10
+    docker logs promo-remna-bot --tail 10
 }
 
 # Function to show help
@@ -116,8 +116,8 @@ show_help() {
     echo "  $0 --prod         # Start in production mode"
     echo ""
     echo "Commands after starting:"
-    echo "  docker logs remnawave-telegram-bot -f    # View logs"
-    echo "  docker exec -it remnawave-telegram-bot bash  # Enter container"
+    echo "  docker logs promo-remna-bot -f    # View logs"
+    echo "  docker exec -it promo-remna-bot bash  # Enter container"
     echo "  docker-compose down                       # Stop containers"
 }
 
@@ -156,8 +156,8 @@ main() {
     echo ""
     echo -e "${GREEN}🎉 Bot is now running!${NC}"
     echo -e "${BLUE}📋 Useful commands:${NC}"
-    echo "  docker logs remnawave-telegram-bot -f    # View logs"
-    echo "  docker exec -it remnawave-telegram-bot bash  # Enter container"
+    echo "  docker logs promo-remna-bot -f    # View logs"
+    echo "  docker exec -it promo-remna-bot bash  # Enter container"
     echo "  docker-compose down                       # Stop containers"
 }
 

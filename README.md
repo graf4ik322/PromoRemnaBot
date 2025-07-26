@@ -28,8 +28,8 @@ Telegram бот для управления промо-кампаниями че
 
 ```bash
 # 1. Клонирование репозитория
-git clone <repository-url>
-cd remnawave-telegram-bot
+git clone https://github.com/graf4ik322/PromoRemnaBot.git
+cd PromoRemnaBot
 
 # 2. Настройка конфигурации
 cp .env.example .env
@@ -46,8 +46,8 @@ cp .env.example .env
 
 #### 1. Клонирование репозитория
 ```bash
-git clone <repository-url>
-cd remnawave-telegram-bot
+git clone https://github.com/graf4ik322/PromoRemnaBot.git
+cd PromoRemnaBot
 ```
 
 #### 2. Установка зависимостей
@@ -169,10 +169,10 @@ python main.py
 ./docker-scripts/stop.sh --prod
 
 # Просмотр логов
-docker logs remnawave-telegram-bot -f
+docker logs promo-remna-bot -f
 
 # Вход в контейнер
-docker exec -it remnawave-telegram-bot bash
+docker exec -it promo-remna-bot bash
 ```
 
 ### 📊 Мониторинг
@@ -182,10 +182,10 @@ docker exec -it remnawave-telegram-bot bash
 docker-compose ps
 
 # Использование ресурсов
-docker stats remnawave-telegram-bot
+docker stats promo-remna-bot
 
 # Health check
-docker inspect remnawave-telegram-bot | grep Health -A 10
+docker inspect promo-remna-bot | grep Health -A 10
 ```
 
 ## Архитектура

@@ -22,8 +22,8 @@ sudo usermod -aG docker $USER
 # Перелогиньтесь после выполнения
 
 # 2. Получение исходного кода
-git clone <repository-url>
-cd remnawave-telegram-bot
+git clone https://github.com/graf4ik322/PromoRemnaBot.git
+cd PromoRemnaBot
 
 # 3. Настройка конфигурации
 cp .env.example .env
@@ -41,8 +41,8 @@ nano .env
 #### 1. Получение исходного кода
 
 ```bash
-git clone <repository-url>
-cd remnawave-telegram-bot
+git clone https://github.com/graf4ik322/PromoRemnaBot.git
+cd PromoRemnaBot
 ```
 
 #### 2. Установка зависимостей
@@ -188,9 +188,9 @@ sudo nano /etc/systemd/system/remnawave-bot.service
 
 ```ini
 User=your_username
-WorkingDirectory=/full/path/to/remnawave-telegram-bot
-ExecStart=/usr/bin/python3 /full/path/to/remnawave-telegram-bot/main.py
-ReadWritePaths=/full/path/to/remnawave-telegram-bot
+WorkingDirectory=/full/path/to/PromoRemnaBot
+ExecStart=/usr/bin/python3 /full/path/to/PromoRemnaBot/main.py
+ReadWritePaths=/full/path/to/PromoRemnaBot
 ```
 
 ### 3. Активация службы

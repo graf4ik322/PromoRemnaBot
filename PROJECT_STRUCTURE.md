@@ -3,7 +3,7 @@
 ## Обзор файлов
 
 ```
-remnawave-telegram-bot/
+PromoRemnaBot/
 ├── 📄 main.py                    # Основной файл приложения
 ├── ⚙️ config.py                  # Конфигурация и настройки
 ├── 🤖 bot_handlers.py            # Обработчики команд бота

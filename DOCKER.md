@@ -47,8 +47,8 @@ docker compose version
 ### 1. Подготовка проекта
 ```bash
 # Клонирование репозитория
-git clone <repository-url>
-cd remnawave-telegram-bot
+git clone https://github.com/graf4ik322/PromoRemnaBot.git
+cd PromoRemnaBot
 
 # Создание .env файла
 cp .env.example .env
@@ -67,7 +67,7 @@ nano .env
 docker-compose up --build -d
 
 # Просмотр логов
-docker logs remnawave-telegram-bot -f
+docker logs promo-remna-bot -f
 ```
 
 ### 3. Production режим
@@ -152,29 +152,29 @@ docker-compose up --build -d
 
 ```bash
 # Все логи
-docker logs remnawave-telegram-bot
+docker logs promo-remna-bot
 
 # Последние 100 строк
-docker logs remnawave-telegram-bot --tail 100
+docker logs promo-remna-bot --tail 100
 
 # Следить за логами в реальном времени
-docker logs remnawave-telegram-bot -f
+docker logs promo-remna-bot -f
 
 # Логи с определенного времени
-docker logs remnawave-telegram-bot --since="2024-01-01T00:00:00"
+docker logs promo-remna-bot --since="2024-01-01T00:00:00"
 ```
 
 ### Вход в контейнер
 
 ```bash
 # Интерактивный shell
-docker exec -it remnawave-telegram-bot bash
+docker exec -it promo-remna-bot bash
 
 # Выполнение команды
-docker exec remnawave-telegram-bot python3 test_bot.py
+docker exec promo-remna-bot python3 test_bot.py
 
 # Просмотр процессов
-docker exec remnawave-telegram-bot ps aux
+docker exec promo-remna-bot ps aux
 ```
 
 ## 📊 Мониторинг
@@ -189,14 +189,14 @@ docker ps
 docker-compose ps
 
 # Детальная информация
-docker inspect remnawave-telegram-bot
+docker inspect promo-remna-bot
 ```
 
 ### Использование ресурсов
 
 ```bash
 # Статистика в реальном времени
-docker stats remnawave-telegram-bot
+docker stats promo-remna-bot
 
 # Использование диска
 docker system df
@@ -209,10 +209,10 @@ docker images
 
 ```bash
 # Проверка здоровья контейнера
-docker inspect remnawave-telegram-bot | grep Health -A 10
+docker inspect promo-remna-bot | grep Health -A 10
 
 # Ручная проверка
-docker exec remnawave-telegram-bot python3 -c "import requests; requests.get('https://api.telegram.org')"
+docker exec promo-remna-bot python3 -c "import requests; requests.get('https://api.telegram.org')"
 ```
 
 ## 🔄 Обновление
@@ -273,7 +273,7 @@ docker system prune -f
 ./docker-scripts/stop.sh --remove-volumes
 
 # Удаление образов проекта
-docker rmi remnawave-telegram-bot_remnawave-bot
+docker rmi promo-remna-bot_remnawave-bot
 
 # Очистка system
 docker system prune -a -f
@@ -360,13 +360,13 @@ docker builder prune -f
 docker-compose config
 
 # Проверка переменных окружения
-docker exec remnawave-telegram-bot env
+docker exec promo-remna-bot env
 
 # Проверка файловой системы
-docker exec remnawave-telegram-bot ls -la /app
+docker exec promo-remna-bot ls -la /app
 
 # Проверка сетевого подключения
-docker exec remnawave-telegram-bot curl -I https://api.telegram.org
+docker exec promo-remna-bot curl -I https://api.telegram.org
 ```
 
 ### Логи отладки
@@ -384,10 +384,10 @@ docker-compose restart remnawave-bot
 
 ```bash
 # Запуск тестов в контейнере
-docker exec remnawave-telegram-bot python3 test_bot.py
+docker exec promo-remna-bot python3 test_bot.py
 
 # Интерактивное тестирование
-docker exec -it remnawave-telegram-bot python3
+docker exec -it promo-remna-bot python3
 ```
 
 ## 📋 Troubleshooting
@@ -397,7 +397,7 @@ docker exec -it remnawave-telegram-bot python3
 #### 1. Контейнер не запускается
 ```bash
 # Проверка логов
-docker logs remnawave-telegram-bot
+docker logs promo-remna-bot
 
 # Проверка конфигурации .env
 cat .env
@@ -412,7 +412,7 @@ ls -la .env
 docker network ls
 
 # Проверка подключения к API
-docker exec remnawave-telegram-bot curl -v https://api.telegram.org
+docker exec promo-remna-bot curl -v https://api.telegram.org
 ```
 
 #### 3. Проблемы с volumes
@@ -421,7 +421,7 @@ docker exec remnawave-telegram-bot curl -v https://api.telegram.org
 docker volume ls
 
 # Проверка монтирования
-docker exec remnawave-telegram-bot df -h
+docker exec promo-remna-bot df -h
 ```
 
 #### 4. Высокое потребление ресурсов
@@ -430,7 +430,7 @@ docker exec remnawave-telegram-bot df -h
 docker stats --no-stream
 
 # Анализ использования памяти
-docker exec remnawave-telegram-bot free -h
+docker exec promo-remna-bot free -h
 ```
 
 ### Получение помощи

@@ -5,9 +5,9 @@ After=network.target
 [Service]
 Type=simple
 User=ubuntu
-WorkingDirectory=/path/to/remnawave-telegram-bot
+WorkingDirectory=/path/to/PromoRemnaBot
 Environment=PATH=/usr/bin:/usr/local/bin
-ExecStart=/usr/bin/python3 /path/to/remnawave-telegram-bot/main.py
+ExecStart=/usr/bin/python3 /path/to/PromoRemnaBot/main.py
 Restart=always
 RestartSec=10
 
@@ -21,7 +21,7 @@ NoNewPrivileges=yes
 PrivateTmp=yes
 ProtectHome=yes
 ProtectSystem=strict
-ReadWritePaths=/path/to/remnawave-telegram-bot
+ReadWritePaths=/path/to/PromoRemnaBot
 
 [Install]
 WantedBy=multi-user.target

@@ -3,7 +3,7 @@ version: '3.8'
 services:
   remnawave-bot:
     build: .
-    container_name: remnawave-telegram-bot
+    container_name: promo-remna-bot
     restart: unless-stopped
     
     # Environment variables

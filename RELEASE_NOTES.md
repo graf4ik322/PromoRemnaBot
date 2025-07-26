@@ -134,8 +134,8 @@ PyYAML==6.0.2              # YAML parsing for tests
 ./docker-scripts/stop.sh [--prod]     # Stop containers
 
 # Monitoring
-docker logs remnawave-telegram-bot -f # View logs
-docker stats remnawave-telegram-bot   # Resource usage
+docker logs promo-remna-bot -f # View logs
+docker stats promo-remna-bot   # Resource usage
 
 # Testing
 python3 test_bot.py        # Application tests
@@ -187,6 +187,20 @@ python3 test_docker.py     # Docker configuration tests
 - Comprehensive documentation
 - Testing framework implementation
 
+### 🔄 Repository Updates
+
+**Main Branch Migration:**
+- ✅ **Stable Main Branch** - All releases now published on main branch
+- ✅ **Updated URLs** - All documentation uses correct GitHub repository URLs
+- ✅ **Container Naming** - Simplified to `promo-remna-bot` and `promo-remna-bot-prod`
+- ✅ **Installation Paths** - Updated to use `PromoRemnaBot` directory name
+- ✅ **Service Files** - SystemD and Docker configs reflect new structure
+
+**Breaking Changes:**
+- Container names changed from `remnawave-telegram-bot` to `promo-remna-bot`
+- Repository clone path changed to `PromoRemnaBot` directory
+- Main branch is now the primary development and release branch
+
 ### 📄 License
 
 This project is licensed under the **MIT License** - see the LICENSE file for details.
@@ -205,4 +219,4 @@ This project is licensed under the **MIT License** - see the LICENSE file for de
 
 **Repository:** https://github.com/graf4ik322/PromoRemnaBot
 
-**Quick Start:** `git clone <repo> && cd PromoRemnaBot && ./docker-scripts/start.sh --prod`
+**Quick Start:** `git clone https://github.com/graf4ik322/PromoRemnaBot.git && cd PromoRemnaBot && ./docker-scripts/start.sh --prod`
