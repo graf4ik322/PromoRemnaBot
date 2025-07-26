@@ -134,16 +134,16 @@ class RemnawaveService:
         """Get list of tags with usage statistics"""
         try:
             # Get all users
-            users_response = await self.sdk.users.get_users()
+            users_response = await self.sdk.users.get_all_users_v2()
             
-            if not users_response:
+            if not users_response or not users_response.users:
                 return []
             
             # Group users by tag
             tag_stats = {}
             
-            for user in users_response:
-                username = user.get('username', '')
+            for user in users_response.users:
+                username = getattr(user, 'username', '')
                 
                 # Extract tag from username (assuming format: promo-{random}-{tag})
                 if username.startswith(Config.DEFAULT_UUID_PREFIX):
@@ -162,9 +162,9 @@ class RemnawaveService:
                         tag_stats[tag]['total'] += 1
                         
                         # Check if user is active (not disabled and has remaining traffic)
-                        if not user.get('disabled', False):
-                            used_traffic = user.get('used_traffic', 0)
-                            traffic_limit = user.get('traffic_limit', 0)
+                        if not getattr(user, 'disabled', False):
+                            used_traffic = getattr(user, 'used_traffic', 0)
+                            traffic_limit = getattr(user, 'traffic_limit', 0)
                             
                             if used_traffic < traffic_limit:
                                 tag_stats[tag]['active'] += 1
@@ -188,17 +188,17 @@ class RemnawaveService:
         """
         try:
             # Get all users
-            users_response = await self.sdk.users.get_users()
+            users_response = await self.sdk.users.get_all_users_v2()
             
-            if not users_response:
+            if not users_response or not users_response.users:
                 return 0, 0
             
             tag_users = []
             deleted_count = 0
             
             # Find users with the specified tag
-            for user in users_response:
-                username = user.get('username', '')
+            for user in users_response.users:
+                username = getattr(user, 'username', '')
                 
                 if username.startswith(Config.DEFAULT_UUID_PREFIX):
                     parts = username.split('-')
@@ -209,14 +209,14 @@ class RemnawaveService:
                             tag_users.append(user)
                             
                             # Check if user is "used" (disabled or traffic limit exceeded)
-                            used_traffic = user.get('used_traffic', 0)
-                            traffic_limit = user.get('traffic_limit', 0)
-                            is_disabled = user.get('disabled', False)
+                            used_traffic = getattr(user, 'used_traffic', 0)
+                            traffic_limit = getattr(user, 'traffic_limit', 0)
+                            is_disabled = getattr(user, 'disabled', False)
                             
                             if is_disabled or used_traffic >= traffic_limit:
                                 # Delete used subscription
                                 try:
-                                    await self.sdk.users.delete_user(user.get('id'))
+                                    await self.sdk.users.delete_user(getattr(user, 'id', None))
                                     deleted_count += 1
                                     logger.info(f"Deleted used subscription: {username}")
                                 except Exception as e:
@@ -234,15 +234,15 @@ class RemnawaveService:
     async def get_tag_preview_stats(self, tag: str) -> Dict[str, int]:
         """Get preview statistics for a specific tag before deletion"""
         try:
-            users_response = await self.sdk.users.get_users()
+            users_response = await self.sdk.users.get_all_users_v2()
             
-            if not users_response:
+            if not users_response or not users_response.users:
                 return {'total': 0, 'active': 0, 'used': 0}
             
             stats = {'total': 0, 'active': 0, 'used': 0}
             
-            for user in users_response:
-                username = user.get('username', '')
+            for user in users_response.users:
+                username = getattr(user, 'username', '')
                 
                 if username.startswith(Config.DEFAULT_UUID_PREFIX):
                     parts = username.split('-')
@@ -252,9 +252,9 @@ class RemnawaveService:
                         if user_tag == tag:
                             stats['total'] += 1
                             
-                            used_traffic = user.get('used_traffic', 0)
-                            traffic_limit = user.get('traffic_limit', 0)
-                            is_disabled = user.get('disabled', False)
+                            used_traffic = getattr(user, 'used_traffic', 0)
+                            traffic_limit = getattr(user, 'traffic_limit', 0)
+                            is_disabled = getattr(user, 'disabled', False)
                             
                             if is_disabled or used_traffic >= traffic_limit:
                                 stats['used'] += 1
