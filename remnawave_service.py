@@ -65,21 +65,44 @@ class RemnawaveService:
                 username = f"{Config.DEFAULT_UUID_PREFIX}{random_suffix}-{tag}"
                 
                 try:
-                    # Create user via API
+                    # Create user via API with minimal required parameters
                     user_data = {
-                        "username": username,
-                        "traffic_limit": traffic_limit_bytes,
-                        "expire_date": None,  # No time limit
+                        "data_limit": traffic_limit_bytes,
+                        "expire_date": None,  # No time limit (unlimited)
                         "inbound_ids": Config.DEFAULT_INBOUND_IDS,
-                        "sub_revoked_at": None,
-                        "sub_last_user_agent": "",
-                        "sub_updated_at": None,
-                        "disabled": False,
-                        "data_limit_reset_strategy": "no_reset"
+                        "disabled": False
                     }
                     
-                    # Create user using SDK
-                    response = await self.sdk.users.create_user(**user_data)
+                    # Try different parameter structures for create_user
+                    try:
+                        # Method 1: Try with positional username argument
+                        response = await self.sdk.users.create_user(
+                            username=username,
+                            data_limit=traffic_limit_bytes,
+                            expire_date=None,
+                            inbound_ids=Config.DEFAULT_INBOUND_IDS,
+                            disabled=False
+                        )
+                    except Exception as e1:
+                        logger.warning(f"Method 1 failed: {e1}, trying method 2")
+                        try:
+                            # Method 2: Try simpler structure
+                            response = await self.sdk.users.create_user(
+                                name=username,
+                                data_limit=traffic_limit_bytes,
+                                inbound_ids=Config.DEFAULT_INBOUND_IDS
+                            )
+                        except Exception as e2:
+                            logger.warning(f"Method 2 failed: {e2}, trying method 3")
+                            try:
+                                # Method 3: Try minimal parameters
+                                response = await self.sdk.users.create_user(
+                                    username=username,
+                                    inbound_ids=Config.DEFAULT_INBOUND_IDS
+                                )
+                            except Exception as e3:
+                                logger.error(f"All methods failed: {e1}, {e2}, {e3}")
+                                raise e3
                     
                     if response:
                         # Get subscription link

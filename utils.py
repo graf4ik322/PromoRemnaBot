@@ -19,10 +19,35 @@ class FileManager:
         self._ensure_files_directory()
     
     def _ensure_files_directory(self):
-        """Ensure the files directory exists"""
-        if not os.path.exists(self.files_dir):
-            os.makedirs(self.files_dir)
-            logger.info(f"Created directory: {self.files_dir}")
+        """Ensure the files directory exists with proper permissions"""
+        try:
+            if not os.path.exists(self.files_dir):
+                os.makedirs(self.files_dir, mode=0o755)
+                logger.info(f"Created directory: {self.files_dir}")
+            else:
+                # Try to set permissions on existing directory
+                os.chmod(self.files_dir, 0o755)
+        except (OSError, PermissionError) as e:
+            logger.warning(f"Could not set permissions for {self.files_dir}: {e}")
+            # Try alternative directories
+            fallback_dirs = [
+                os.path.join(os.getcwd(), "temp_files"),
+                "/tmp/promo_files",
+                os.path.expanduser("~/promo_files")
+            ]
+            
+            for fallback_dir in fallback_dirs:
+                try:
+                    os.makedirs(fallback_dir, mode=0o755, exist_ok=True)
+                    self.files_dir = fallback_dir
+                    logger.info(f"Using fallback directory: {fallback_dir}")
+                    break
+                except (OSError, PermissionError):
+                    continue
+            else:
+                # Last resort: use current directory
+                logger.warning("Using current directory for file storage")
+                self.files_dir = os.getcwd()
     
     async def save_subscription_file(self, tag: str, subscription_links: List[str]) -> Optional[str]:
         """
@@ -36,6 +61,9 @@ class FileManager:
             File URL or None if failed
         """
         try:
+            # Ensure directory exists and is writable
+            self._ensure_files_directory()
+            
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             filename = f"promo_{tag}_{timestamp}.txt"
             filepath = os.path.join(self.files_dir, filename)
@@ -53,9 +81,33 @@ class FileManager:
             content_lines.extend(subscription_links)
             content = "\n".join(content_lines)
             
-            # Save file asynchronously
-            async with aiofiles.open(filepath, 'w', encoding='utf-8') as f:
-                await f.write(content)
+            # Try to save file with fallback options
+            saved = False
+            for attempt in range(3):
+                try:
+                    # Save file asynchronously
+                    async with aiofiles.open(filepath, 'w', encoding='utf-8') as f:
+                        await f.write(content)
+                    
+                    # Verify file was actually saved
+                    if os.path.exists(filepath) and os.path.getsize(filepath) > 0:
+                        saved = True
+                        break
+                        
+                except (OSError, PermissionError) as e:
+                    logger.warning(f"Attempt {attempt + 1} failed to save {filepath}: {e}")
+                    
+                    # Try alternative filename and directory
+                    if attempt == 1:
+                        filename = f"promo_{tag}_{timestamp}_alt.txt"
+                        filepath = os.path.join("/tmp", filename) if os.access("/tmp", os.W_OK) else os.path.join(os.getcwd(), filename)
+                    elif attempt == 2:
+                        filename = f"promo_{tag}_{timestamp}_final.txt"
+                        filepath = os.path.join(os.getcwd(), filename)
+            
+            if not saved:
+                logger.error(f"Failed to save subscription file after 3 attempts")
+                return None
             
             # Return file URL (you would implement actual file upload to your server here)
             file_url = f"{Config.SUBSCRIPTION_FILE_BASE_URL}{filename}"
