@@ -33,7 +33,7 @@ async def test_user_creation():
         print("\n📡 Testing user creation methods...")
         
         # Test username for creation
-        test_username = "test-user-debug-001"
+        test_username = "test-user-debug-002"
         test_inbound_ids = Config.DEFAULT_INBOUND_IDS
         test_data_limit = 1024 * 1024 * 1024  # 1GB
         
@@ -41,54 +41,53 @@ async def test_user_creation():
         print(f"Test inbound IDs: {test_inbound_ids}")
         print(f"Test data limit: {test_data_limit}")
         
-        # Method 1: Try with comprehensive parameters
-        print("\n1. Testing Method 1 (comprehensive parameters)...")
+        # Method 1: Try with username + expire_at + traffic_limit (fixed approach)
+        print("\n1. Testing Method 1 (username + expire_at + traffic_limit)...")
         try:
             response = await sdk.users.create_user(
                 username=test_username,
-                data_limit=test_data_limit,
-                expire_date=None,
-                inbound_ids=test_inbound_ids,
-                disabled=False
+                expire_at=None,
+                traffic_limit=test_data_limit
             )
             print(f"✅ Method 1 SUCCESS: {response}")
             return True
         except Exception as e:
             print(f"❌ Method 1 failed: {e}")
         
-        # Method 2: Try with simpler structure
-        print("\n2. Testing Method 2 (name parameter)...")
+        # Method 2: Try with username + expire_at + data_limit
+        print("\n2. Testing Method 2 (username + expire_at + data_limit)...")
         try:
             response = await sdk.users.create_user(
-                name=test_username,
-                data_limit=test_data_limit,
-                inbound_ids=test_inbound_ids
+                username=test_username + "-v2",
+                expire_at=None,
+                data_limit=test_data_limit
             )
             print(f"✅ Method 2 SUCCESS: {response}")
             return True
         except Exception as e:
             print(f"❌ Method 2 failed: {e}")
         
-        # Method 3: Try minimal parameters
-        print("\n3. Testing Method 3 (minimal parameters)...")
+        # Method 3: Try minimal required fields only
+        print("\n3. Testing Method 3 (minimal: username + expire_at)...")
         try:
             response = await sdk.users.create_user(
-                username=test_username,
-                inbound_ids=test_inbound_ids
+                username=test_username + "-v3",
+                expire_at=None
             )
             print(f"✅ Method 3 SUCCESS: {response}")
             return True
         except Exception as e:
             print(f"❌ Method 3 failed: {e}")
         
-        # Method 4: Try with traffic_limit instead of data_limit
-        print("\n4. Testing Method 4 (traffic_limit parameter)...")
+        # Method 4: Try with dict structure
+        print("\n4. Testing Method 4 (dict structure)...")
         try:
-            response = await sdk.users.create_user(
-                username=test_username,
-                traffic_limit=test_data_limit,
-                inbound_ids=test_inbound_ids
-            )
+            user_data = {
+                "username": test_username + "-v4",
+                "expire_at": None,
+                "traffic_limit": test_data_limit
+            }
+            response = await sdk.users.create_user(**user_data)
             print(f"✅ Method 4 SUCCESS: {response}")
             return True
         except Exception as e:
@@ -114,6 +113,43 @@ async def test_user_creation():
         
     except Exception as e:
         print(f"💥 SDK initialization failed: {e}")
+        import traceback
+        traceback.print_exc()
+        return False
+
+async def test_remnawave_service():
+    """Test the actual RemnawaveService class"""
+    
+    print("\n🔧 Testing RemnawaveService class...")
+    
+    try:
+        from remnawave_service import RemnawaveService
+        
+        service = RemnawaveService()
+        
+        # Test creating a few promo users
+        tag = "test-debug"
+        traffic_limit_gb = 1  # 1GB
+        count = 2
+        
+        print(f"Creating {count} promo users with tag '{tag}' and {traffic_limit_gb}GB limit...")
+        
+        subscription_links, file_url = await service.create_promo_users(tag, traffic_limit_gb, count)
+        
+        if subscription_links:
+            print(f"✅ RemnawaveService SUCCESS!")
+            print(f"   Created users: {len(subscription_links)}")
+            print(f"   File URL: {file_url}")
+            print(f"   Subscription links preview:")
+            for i, link in enumerate(subscription_links[:3]):  # Show first 3
+                print(f"     {i+1}. {link[:80]}..." if len(link) > 80 else f"     {i+1}. {link}")
+            return True
+        else:
+            print(f"❌ RemnawaveService FAILED: No users created")
+            return False
+            
+    except Exception as e:
+        print(f"💥 RemnawaveService test failed: {e}")
         import traceback
         traceback.print_exc()
         return False
@@ -173,19 +209,23 @@ async def main():
         print(f"❌ Configuration error: {e}")
         return 1
     
-    # Test user creation
+    # Test direct SDK user creation
     user_success = await test_user_creation()
+    
+    # Test RemnawaveService class
+    service_success = await test_remnawave_service()
     
     # Test file permissions
     file_success = await test_file_permissions()
     
     print("\n" + "=" * 60)
     print("🎯 Test Results Summary:")
-    print(f"  📤 User Creation: {'✅ SUCCESS' if user_success else '❌ FAILED'}")
+    print(f"  📤 Direct SDK User Creation: {'✅ SUCCESS' if user_success else '❌ FAILED'}")
+    print(f"  🔧 RemnawaveService Test: {'✅ SUCCESS' if service_success else '❌ FAILED'}")
     print(f"  📁 File Permissions: {'✅ SUCCESS' if file_success else '❌ FAILED'}")
     
-    if user_success and file_success:
-        print("🎉 All tests passed! The bot should work now.")
+    if service_success and file_success:
+        print("🎉 Core functionality works! The bot should work now.")
         return 0
     else:
         print("💥 Some tests failed. Check the output above for details.")

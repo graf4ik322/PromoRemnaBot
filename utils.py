@@ -15,7 +15,8 @@ class FileManager:
     """File management utilities"""
     
     def __init__(self):
-        self.files_dir = "subscription_files"
+        # Use the same directory as shown in logs for consistency
+        self.files_dir = "/app/temp_files"
         self._ensure_files_directory()
     
     def _ensure_files_directory(self):
@@ -31,9 +32,11 @@ class FileManager:
             logger.warning(f"Could not set permissions for {self.files_dir}: {e}")
             # Try alternative directories
             fallback_dirs = [
+                "/app/temp_files",  # Docker app directory
                 os.path.join(os.getcwd(), "temp_files"),
                 "/tmp/promo_files",
-                os.path.expanduser("~/promo_files")
+                os.path.expanduser("~/promo_files"),
+                "./subscription_files"  # Local fallback
             ]
             
             for fallback_dir in fallback_dirs:

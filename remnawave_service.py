@@ -65,65 +65,84 @@ class RemnawaveService:
                 username = f"{Config.DEFAULT_UUID_PREFIX}{random_suffix}-{tag}"
                 
                 try:
-                    # Create user via API with minimal required parameters
-                    user_data = {
-                        "data_limit": traffic_limit_bytes,
-                        "expire_date": None,  # No time limit (unlimited)
-                        "inbound_ids": Config.DEFAULT_INBOUND_IDS,
-                        "disabled": False
-                    }
+                    # Based on logs, the API expects specific fields for CreateUserRequestDto:
+                    # - username (required)
+                    # - expire_at (required) 
+                    # - traffic_limit or data_limit (may vary)
+                    # - inbound_ids may not be a direct parameter
                     
-                    # Based on logs: username/name parameters are not supported
-                    # Let's try the correct API method parameters
+                    # Method 1: Try with correct required fields
                     try:
-                        # Method 1: Try with just data structure - no username in parameters
                         response = await self.sdk.users.create_user(
-                            data_limit=traffic_limit_bytes,
-                            inbound_ids=Config.DEFAULT_INBOUND_IDS,
-                            expire_date=None
+                            username=username,
+                            expire_at=None,  # Based on error logs, this field is required
+                            traffic_limit=traffic_limit_bytes
                         )
+                        logger.info(f"Method 1 (username + expire_at + traffic_limit) succeeded")
                     except Exception as e1:
-                        logger.warning(f"Method 1 (no username) failed: {e1}, trying method 2")
+                        logger.warning(f"Method 1 failed: {e1}, trying method 2")
                         try:
-                            # Method 2: Try with dict parameter
-                            user_creation_data = {
-                                "data_limit": traffic_limit_bytes,
-                                "inbound_ids": Config.DEFAULT_INBOUND_IDS,
-                                "expire_date": None
-                            }
-                            response = await self.sdk.users.create_user(user_creation_data)
+                            # Method 2: Try with data_limit instead of traffic_limit
+                            response = await self.sdk.users.create_user(
+                                username=username,
+                                expire_at=None,
+                                data_limit=traffic_limit_bytes
+                            )
+                            logger.info(f"Method 2 (username + expire_at + data_limit) succeeded")
                         except Exception as e2:
-                            logger.warning(f"Method 2 (dict) failed: {e2}, trying method 3")
+                            logger.warning(f"Method 2 failed: {e2}, trying method 3")
                             try:
-                                # Method 3: Try minimal - just mandatory fields
-                                response = await self.sdk.users.create_user(
-                                    inbound_ids=Config.DEFAULT_INBOUND_IDS
-                                )
+                                # Method 3: Try with dict structure
+                                user_data = {
+                                    "username": username,
+                                    "expire_at": None,
+                                    "traffic_limit": traffic_limit_bytes
+                                }
+                                response = await self.sdk.users.create_user(**user_data)
+                                logger.info(f"Method 3 (dict with username + expire_at) succeeded")
                             except Exception as e3:
-                                # Log available methods for debugging
-                                available_methods = [m for m in dir(self.sdk.users) if not m.startswith('_')]
-                                logger.error(f"All creation methods failed. Available methods: {available_methods}")
-                                logger.error(f"Errors: {e1}, {e2}, {e3}")
-                                raise e3
+                                logger.warning(f"Method 3 failed: {e3}, trying method 4")
+                                try:
+                                    # Method 4: Try minimal required fields only
+                                    response = await self.sdk.users.create_user(
+                                        username=username,
+                                        expire_at=None
+                                    )
+                                    logger.info(f"Method 4 (minimal: username + expire_at) succeeded")
+                                except Exception as e4:
+                                    # Log available methods for debugging
+                                    available_methods = [m for m in dir(self.sdk.users) if not m.startswith('_')]
+                                    logger.error(f"All creation methods failed. Available methods: {available_methods}")
+                                    logger.error(f"Errors: {e1}, {e2}, {e3}, {e4}")
+                                    raise e4
                     
                     if response:
-                        # User created successfully, now try to set the username
+                        # User created successfully, username was already set during creation
                         try:
                             # Try to get the created user ID from response
                             user_id = None
                             if hasattr(response, 'id'):
                                 user_id = response.id
-                            elif hasattr(response, 'data') and 'id' in response.data:
+                            elif hasattr(response, 'data') and hasattr(response.data, 'id'):
+                                user_id = response.data.id
+                            elif hasattr(response, 'data') and isinstance(response.data, dict) and 'id' in response.data:
                                 user_id = response.data['id']
                             elif isinstance(response, dict) and 'id' in response:
                                 user_id = response['id']
                             
                             if user_id:
-                                # Try to update user with username if there's an update method
-                                if hasattr(self.sdk.users, 'update_user'):
-                                    await self.sdk.users.update_user(user_id, username=username)
-                                elif hasattr(self.sdk.users, 'modify_user'):
-                                    await self.sdk.users.modify_user(user_id, username=username)
+                                # Try to set additional parameters after user creation if needed
+                                try:
+                                    # Check if we need to set inbound_ids or data_limit separately
+                                    if hasattr(self.sdk.users, 'update_user') and Config.DEFAULT_INBOUND_IDS:
+                                        await self.sdk.users.update_user(
+                                            user_id, 
+                                            inbound_ids=Config.DEFAULT_INBOUND_IDS,
+                                            data_limit=traffic_limit_bytes
+                                        )
+                                        logger.info(f"Updated user {username} with inbound_ids and data_limit")
+                                except Exception as update_error:
+                                    logger.warning(f"Could not update user {username} with additional params: {update_error}")
                                 
                                 # Get subscription link using user_id or generated username
                                 subscription_link = await self._get_subscription_link(username, user_id)
@@ -133,14 +152,21 @@ class RemnawaveService:
                                     logger.info(f"Successfully created user: {username} (ID: {user_id})")
                                 else:
                                     logger.warning(f"User created but couldn't get subscription link: {username}")
+                                    # Still add as created since user was created
+                                    subscription_links.append(f"User created: {username} (no subscription link)")
+                                    created_users.append(username)
                             else:
                                 logger.warning(f"User created but couldn't get user ID from response: {response}")
-                                # Still add as created since API call succeeded
-                                subscription_links.append(f"User created successfully: {username}")
+                                # Try to get subscription link by username only
+                                subscription_link = await self._get_subscription_link(username, None)
+                                if subscription_link:
+                                    subscription_links.append(subscription_link)
+                                else:
+                                    subscription_links.append(f"User created: {username} (no ID or subscription link)")
                                 created_users.append(username)
                         
-                        except Exception as update_error:
-                            logger.warning(f"User created but couldn't set username {username}: {update_error}")
+                        except Exception as post_create_error:
+                            logger.warning(f"User created but post-creation processing failed for {username}: {post_create_error}")
                             # Still count as success since user was created
                             subscription_links.append(f"User created: {username}")
                             created_users.append(username)
@@ -164,32 +190,71 @@ class RemnawaveService:
     async def _get_subscription_link(self, username: str, user_id: str = None) -> Optional[str]:
         """Get subscription link for user"""
         try:
-            # Try to get user details by ID first, then by username
+            # Try to get user details by various methods
             user_info = None
             
-            if user_id and hasattr(self.sdk.users, 'get_user_by_id'):
-                try:
-                    user_info = await self.sdk.users.get_user_by_id(user_id)
-                except Exception as e:
-                    logger.warning(f"Could not get user by ID {user_id}: {e}")
-            
-            # Fallback to username
-            if not user_info and hasattr(self.sdk.users, 'get_user_by_username'):
-                try:
-                    user_info = await self.sdk.users.get_user_by_username(username)
-                except Exception as e:
-                    logger.warning(f"Could not get user by username {username}: {e}")
-            
-            # Check if we got subscription URL from user info
-            if user_info and hasattr(user_info, 'subscription_url'):
-                return user_info.subscription_url
-            
-            # Fallback: construct subscription URL manually
-            # This might need adjustment based on actual Remnawave API response format
+            # Try by UUID first if available
             if user_id:
-                return f"{Config.REMNAWAVE_BASE_URL}/sub/{user_id}"
-            else:
-                return f"{Config.REMNAWAVE_BASE_URL}/sub/{username}"
+                for method_name in ['get_user_by_uuid', 'get_user_by_id', 'get_user']:
+                    if hasattr(self.sdk.users, method_name):
+                        try:
+                            method = getattr(self.sdk.users, method_name)
+                            user_info = await method(user_id)
+                            logger.debug(f"Got user info using {method_name}")
+                            break
+                        except Exception as e:
+                            logger.debug(f"Method {method_name} failed for ID {user_id}: {e}")
+            
+            # Try by username if ID methods failed or no ID
+            if not user_info:
+                for method_name in ['get_user_by_username', 'get_users_by_username', 'find_user']:
+                    if hasattr(self.sdk.users, method_name):
+                        try:
+                            method = getattr(self.sdk.users, method_name)
+                            user_info = await method(username)
+                            logger.debug(f"Got user info using {method_name}")
+                            break
+                        except Exception as e:
+                            logger.debug(f"Method {method_name} failed for username {username}: {e}")
+            
+            # Extract subscription URL from user info
+            if user_info:
+                # Try different possible field names for subscription URL
+                for field_name in ['subscription_url', 'sub_url', 'link', 'config_url', 'vless_url']:
+                    if hasattr(user_info, field_name):
+                        url = getattr(user_info, field_name)
+                        if url:
+                            logger.debug(f"Found subscription URL in field {field_name}")
+                            return url
+                
+                # If user_info is a dict, try dict access
+                if isinstance(user_info, dict):
+                    for field_name in ['subscription_url', 'sub_url', 'link', 'config_url', 'vless_url']:
+                        if field_name in user_info and user_info[field_name]:
+                            logger.debug(f"Found subscription URL in dict field {field_name}")
+                            return user_info[field_name]
+            
+            # Fallback: construct subscription URL manually based on common patterns
+            base_url = Config.REMNAWAVE_BASE_URL.rstrip('/')
+            
+            # Try different URL patterns that might work
+            url_patterns = [
+                f"{base_url}/sub/{user_id}" if user_id else None,
+                f"{base_url}/subscription/{user_id}" if user_id else None,
+                f"{base_url}/sub/{username}",
+                f"{base_url}/subscription/{username}",
+                f"{base_url}/api/subscription/{user_id}" if user_id else None,
+                f"{base_url}/api/sub/{username}",
+            ]
+            
+            # Return the first non-None pattern
+            for pattern in url_patterns:
+                if pattern:
+                    logger.debug(f"Using fallback subscription URL pattern: {pattern}")
+                    return pattern
+            
+            logger.warning(f"Could not determine subscription URL for user {username}")
+            return None
             
         except Exception as e:
             logger.error(f"Failed to get subscription link for {username}: {str(e)}")
