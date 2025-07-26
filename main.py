@@ -16,7 +16,7 @@ from telegram.ext import (
     filters
 )
 from config import Config
-from bot_handlers import BotHandlers, WAITING_TAG, WAITING_TRAFFIC, WAITING_COUNT
+from bot_handlers import BotHandlers, WAITING_TAG, WAITING_TRAFFIC, WAITING_COUNT, WAITING_CONFIRMATION
 
 # Configure logging
 def setup_logging():
@@ -89,12 +89,15 @@ class RemnawaveBot:
                     WAITING_COUNT: [
                         MessageHandler(filters.TEXT & ~filters.COMMAND, self.handlers.handle_count_input),
                         CallbackQueryHandler(self.handlers.main_menu_callback, pattern='^main_menu$')
+                    ],
+                    WAITING_CONFIRMATION: [
+                        CallbackQueryHandler(self.handlers.confirm_create_callback, pattern='^confirm_create$'),
+                        CallbackQueryHandler(self.handlers.main_menu_callback, pattern='^main_menu$')
                     ]
                 },
                 fallbacks=[
                     CommandHandler('cancel', self.handlers.cancel_command),
-                    CallbackQueryHandler(self.handlers.main_menu_callback, pattern='^main_menu$'),
-                    CallbackQueryHandler(self.handlers.confirm_create_callback, pattern='^confirm_create$')
+                    CallbackQueryHandler(self.handlers.main_menu_callback, pattern='^main_menu$')
                 ],
                 per_chat=True,
                 allow_reentry=True

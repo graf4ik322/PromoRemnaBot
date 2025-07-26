@@ -14,8 +14,8 @@ from config import Config
 logger = logging.getLogger(__name__)
 
 # Conversation states
-(WAITING_TAG, WAITING_TRAFFIC, WAITING_COUNT, WAITING_CONFIRM_DELETE, 
- SELECTING_TAG_DELETE, SHOWING_DELETE_PREVIEW) = range(6)
+(WAITING_TAG, WAITING_TRAFFIC, WAITING_COUNT, WAITING_CONFIRMATION, WAITING_CONFIRM_DELETE, 
+ SELECTING_TAG_DELETE, SHOWING_DELETE_PREVIEW) = range(7)
 
 class BotHandlers:
     """Main bot handlers class"""
@@ -324,7 +324,7 @@ class BotHandlers:
             )
             self.user_sessions[user_id]['last_message_id'] = last_bot_message.message_id
         
-        return ConversationHandler.END
+        return WAITING_CONFIRMATION
     
     async def confirm_create_callback(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         """Handle creation confirmation"""
