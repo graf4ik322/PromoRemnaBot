@@ -87,6 +87,23 @@ check_environment() {
                 echo -e "  ${RED}❌ ${var} is missing${NC}"
             fi
         done
+        
+        # Check DEFAULT_INBOUND_IDS format
+        if grep -q "^DEFAULT_INBOUND_IDS=" .env; then
+            inbound_ids=$(grep "^DEFAULT_INBOUND_IDS=" .env | cut -d'=' -f2)
+            echo -e "  ${GREEN}✅ DEFAULT_INBOUND_IDS is set: $inbound_ids${NC}"
+            
+            # Validate format
+            if [[ "$inbound_ids" =~ ^[0-9,\ ]+$ ]]; then
+                echo -e "    ${GREEN}✓ Numeric format detected${NC}"
+            elif [[ "$inbound_ids" =~ ^[a-f0-9\-,\ ]+$ ]]; then
+                echo -e "    ${GREEN}✓ UUID format detected${NC}"
+            else
+                echo -e "    ${YELLOW}⚠️  Mixed or unknown format${NC}"
+            fi
+        else
+            echo -e "  ${YELLOW}⚠️  DEFAULT_INBOUND_IDS not set (will use default)${NC}"
+        fi
     else
         echo -e "${RED}❌ .env file not found${NC}"
         if [ -f ".env.example" ]; then

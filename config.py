@@ -8,6 +8,27 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+def _parse_inbound_ids(env_value):
+    """Parse inbound IDs, supporting both numeric IDs and UUIDs"""
+    if not env_value:
+        return [1]
+    
+    ids = []
+    for x in env_value.split(','):
+        x = x.strip()
+        if not x:
+            continue
+        
+        # Try to parse as integer first
+        try:
+            ids.append(int(x))
+        except ValueError:
+            # If not an integer, treat as UUID string
+            if len(x) > 0:  # Basic validation - not empty
+                ids.append(x)
+                
+    return ids if ids else [1]
+
 class Config:
     """Configuration class for the bot"""
     
@@ -20,7 +41,7 @@ class Config:
     REMNAWAVE_CADDY_TOKEN = os.getenv('REMNAWAVE_CADDY_TOKEN')
     
     # User Creation Settings
-    DEFAULT_INBOUND_IDS = [int(x.strip()) for x in os.getenv('DEFAULT_INBOUND_IDS', '1').split(',')]
+    DEFAULT_INBOUND_IDS = _parse_inbound_ids(os.getenv('DEFAULT_INBOUND_IDS', '1'))
     DEFAULT_PROTOCOL = os.getenv('DEFAULT_PROTOCOL', 'vless')
     DEFAULT_UUID_PREFIX = os.getenv('DEFAULT_UUID_PREFIX', 'promo-')
     SUBSCRIPTION_FILE_BASE_URL = os.getenv('SUBSCRIPTION_FILE_BASE_URL', 'https://example.com/files/')

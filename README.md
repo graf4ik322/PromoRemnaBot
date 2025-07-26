@@ -308,6 +308,17 @@ remnawave-telegram-bot/
 ./docker-scripts/diagnose.sh
 ```
 
+**Ошибка "invalid literal for int()":**
+```bash
+# Проверьте формат DEFAULT_INBOUND_IDS в .env
+grep DEFAULT_INBOUND_IDS .env
+
+# Исправьте формат (числа или UUID):
+DEFAULT_INBOUND_IDS=1,2,3
+# или
+DEFAULT_INBOUND_IDS=b9811fcd-f20b-45c2-912a-fb21ab6c7664
+```
+
 **Docker daemon не запущен:**
 ```bash
 sudo systemctl start docker

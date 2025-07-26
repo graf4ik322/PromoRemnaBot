@@ -165,6 +165,31 @@ REMNAWAVE_TOKEN=your_api_token_here
 ADMIN_USER_IDS=123456789,987654321
 ```
 
+### Ошибка: "ValueError: invalid literal for int() with base 10"
+
+**Симптомы:**
+```
+ValueError: invalid literal for int() with base 10: 'b9811fcd-f20b-45c2-912a-fb21ab6c7664'
+```
+
+**Причина:**
+В поле `DEFAULT_INBOUND_IDS` указан UUID, но код пытается преобразовать его в число.
+
+**Решения:**
+```bash
+# Проверьте формат DEFAULT_INBOUND_IDS в .env файле
+grep DEFAULT_INBOUND_IDS .env
+
+# Используйте числовые ID:
+DEFAULT_INBOUND_IDS=1,2,3
+
+# Или UUID (поддерживается с версии v0.0.2+):
+DEFAULT_INBOUND_IDS=b9811fcd-f20b-45c2-912a-fb21ab6c7664,another-uuid
+
+# Обновите до последней версии:
+git pull && ./docker-scripts/start-safe.sh --prod
+```
+
 ### Ошибка: "Failed to connect to Remnawave API"
 
 **Симптомы:**
