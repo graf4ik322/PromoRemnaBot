@@ -1,0 +1,4 @@
+remnawave-api==1.1.3
+python-telegram-bot==22.3
+python-dotenv==1.0.0
+aiofiles==24.1.0

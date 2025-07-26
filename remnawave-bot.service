@@ -1,0 +1,27 @@
+[Unit]
+Description=Remnawave Telegram Bot
+After=network.target
+
+[Service]
+Type=simple
+User=ubuntu
+WorkingDirectory=/path/to/remnawave-telegram-bot
+Environment=PATH=/usr/bin:/usr/local/bin
+ExecStart=/usr/bin/python3 /path/to/remnawave-telegram-bot/main.py
+Restart=always
+RestartSec=10
+
+# Output to journal
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=remnawave-bot
+
+# Security settings
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectHome=yes
+ProtectSystem=strict
+ReadWritePaths=/path/to/remnawave-telegram-bot
+
+[Install]
+WantedBy=multi-user.target
