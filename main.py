@@ -89,7 +89,10 @@ class RemnawaveBot:
                 },
                 fallbacks=[
                     CommandHandler('cancel', self.handlers.cancel_command),
-                    CallbackQueryHandler(self.handlers.main_menu_callback, pattern='^main_menu$')
+                    CallbackQueryHandler(self.handlers.main_menu_callback, pattern='^main_menu$'),
+                    # Add traffic limit handler as fallback for global access
+                    CallbackQueryHandler(self.handlers.handle_traffic_limit, pattern=r'^traffic_\d+$'),
+                    CallbackQueryHandler(self.handlers.confirm_create_callback, pattern='^confirm_create$')
                 ],
                 per_chat=True,
                 allow_reentry=True
@@ -100,15 +103,9 @@ class RemnawaveBot:
             self.application.add_handler(CommandHandler('cancel', self.handlers.cancel_command))
             self.application.add_handler(promo_conv_handler)
             
-            # Callback query handlers for main functions
+            # Callback query handlers for main functions (non-conversation)
             self.application.add_handler(CallbackQueryHandler(
                 self.handlers.main_menu_callback, pattern='^main_menu$'
-            ))
-            self.application.add_handler(CallbackQueryHandler(
-                self.handlers.handle_traffic_limit, pattern=r'^traffic_\d+$'
-            ))
-            self.application.add_handler(CallbackQueryHandler(
-                self.handlers.confirm_create_callback, pattern='^confirm_create$'
             ))
             self.application.add_handler(CallbackQueryHandler(
                 self.handlers.delete_used_callback, pattern='^delete_used$'

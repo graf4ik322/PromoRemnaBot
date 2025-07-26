@@ -73,9 +73,9 @@ class BotHandlers:
             return ConversationHandler.END
         
         await update.message.reply_text(
-            "🤖 *Добро пожаловать в Remnawave Promo Bot!*\n\n"
+            "🤖 <b>Добро пожаловать в Remnawave Promo Bot!</b>\n\n"
             "Выберите действие:",
-            parse_mode='Markdown',
+            parse_mode='HTML',
             reply_markup=self._get_main_menu_keyboard()
         )
         return ConversationHandler.END
@@ -86,9 +86,9 @@ class BotHandlers:
         await query.answer()
         
         await query.edit_message_text(
-            "🤖 *Remnawave Promo Bot*\n\n"
+            "🤖 <b>Remnawave Promo Bot</b>\n\n"
             "Выберите действие:",
-            parse_mode='Markdown',
+            parse_mode='HTML',
             reply_markup=self._get_main_menu_keyboard()
         )
         return ConversationHandler.END
@@ -102,13 +102,13 @@ class BotHandlers:
         self.user_sessions[user_id] = {}
         
         await query.edit_message_text(
-            "🏷 *Создание промо-кампании*\n\n"
+            "🏷 <b>Создание промо-кампании</b>\n\n"
             "Введите тег кампании:\n\n"
-            "⚠️ *Требования к тегу:*\n"
+            "⚠️ <b>Требования к тегу:</b>\n"
             "• Только латинские буквы\n"
             "• Цифры, подчеркивания и дефисы разрешены\n"
-            "• Пробелы заменяйте на подчеркивания (_)",
-            parse_mode='Markdown',
+            "• Пробелы заменяйте на подчеркивания",
+            parse_mode='HTML',
             reply_markup=self._get_back_to_main_keyboard()
         )
         return WAITING_TAG
@@ -128,13 +128,13 @@ class BotHandlers:
         if not self.remnawave_service._validate_tag(tag):
             # Send new message instead of trying to edit
             await update.effective_chat.send_message(
-                text="❌ *Неверный формат тега!*\n\n"
+                text="❌ <b>Неверный формат тега!</b>\n\n"
                      "Введите тег кампании:\n\n"
-                     "⚠️ *Требования к тегу:*\n"
+                     "⚠️ <b>Требования к тегу:</b>\n"
                      "• Только латинские буквы\n"
                      "• Цифры, подчеркивания и дефисы разрешены\n"
-                     "• Пробелы заменяйте на подчеркивания (_)",
-                parse_mode='Markdown',
+                     "• Пробелы заменяйте на подчеркивания",
+                parse_mode='HTML',
                 reply_markup=self._get_back_to_main_keyboard()
             )
             return WAITING_TAG
@@ -144,9 +144,9 @@ class BotHandlers:
         
         # Send new message for traffic limit selection
         await update.effective_chat.send_message(
-            text=f"✅ *Тег:* `{tag}`\n\n"
+            text=f"✅ <b>Тег:</b> <code>{tag}</code>\n\n"
                  "📊 Выберите лимит трафика:",
-            parse_mode='Markdown',
+            parse_mode='HTML',
             reply_markup=self._get_traffic_limit_keyboard()
         )
         
@@ -182,10 +182,10 @@ class BotHandlers:
         tag = self.user_sessions[user_id]['tag']
         
         await query.edit_message_text(
-            f"✅ *Тег:* `{tag}`\n"
-            f"📊 *Лимит трафика:* {traffic_limit}GB\n\n"
+            f"✅ <b>Тег:</b> <code>{tag}</code>\n"
+            f"📊 <b>Лимит трафика:</b> {traffic_limit}GB\n\n"
             f"🔢 Введите количество подписок (1-{Config.MAX_SUBSCRIPTIONS_PER_REQUEST}):",
-            parse_mode='Markdown',
+            parse_mode='HTML',
             reply_markup=self._get_back_to_main_keyboard()
         )
         return WAITING_COUNT
@@ -211,9 +211,9 @@ class BotHandlers:
                 
         except ValueError:
             await update.effective_chat.send_message(
-                text=f"❌ *Неверное количество!*\n\n"
+                text=f"❌ <b>Неверное количество!</b>\n\n"
                      f"Введите число от 1 до {Config.MAX_SUBSCRIPTIONS_PER_REQUEST}:",
-                parse_mode='Markdown',
+                parse_mode='HTML',
                 reply_markup=self._get_back_to_main_keyboard()
             )
             return WAITING_COUNT
@@ -229,12 +229,12 @@ class BotHandlers:
         ]
         
         await update.effective_chat.send_message(
-            text=f"📋 *Подтверждение создания:*\n\n"
-                 f"🏷 **Тег:** `{tag}`\n"
-                 f"📊 **Лимит трафика:** {traffic_limit}GB\n"
-                 f"🔢 **Количество:** {count}\n\n"
+            text=f"📋 <b>Подтверждение создания:</b>\n\n"
+                 f"🏷 <b>Тег:</b> <code>{tag}</code>\n"
+                 f"📊 <b>Лимит трафика:</b> {traffic_limit}GB\n"
+                 f"🔢 <b>Количество:</b> {count}\n\n"
                  f"Подтвердить создание {count} подписок?",
-            parse_mode='Markdown',
+            parse_mode='HTML',
             reply_markup=InlineKeyboardMarkup(confirm_keyboard)
         )
         
@@ -261,11 +261,11 @@ class BotHandlers:
         
         # Show progress message
         await query.edit_message_text(
-            f"⏳ *Создание {count} подписок...*\n\n"
-            f"🏷 Тег: `{tag}`\n"
+            f"⏳ <b>Создание {count} подписок...</b>\n\n"
+            f"🏷 Тег: <code>{tag}</code>\n"
             f"📊 Лимит: {traffic_limit}GB\n\n"
             f"⚠️ Не закрывайте бота, процесс может занять некоторое время.",
-            parse_mode='Markdown'
+            parse_mode='HTML'
         )
         
         try:
@@ -278,35 +278,35 @@ class BotHandlers:
             
             if success_count > 0:
                 result_text = (
-                    f"✅ *Промо-кампания создана успешно!*\n\n"
-                    f"🏷 **Тег:** `{tag}`\n"
-                    f"📊 **Лимит трафика:** {traffic_limit}GB\n"
-                    f"✅ **Создано подписок:** {success_count}/{count}\n\n"
+                    f"✅ <b>Промо-кампания создана успешно!</b>\n\n"
+                    f"🏷 <b>Тег:</b> <code>{tag}</code>\n"
+                    f"📊 <b>Лимит трафика:</b> {traffic_limit}GB\n"
+                    f"✅ <b>Создано подписок:</b> {success_count}/{count}\n\n"
                 )
                 
                 if file_url:
-                    result_text += f"📁 **Файл с подписками:** [Скачать]({file_url})\n\n"
+                    result_text += f"📁 <b>Файл с подписками:</b> <a href='{file_url}'>Скачать</a>\n\n"
                 
                 # Show first few subscription links as examples
                 if len(subscription_links) <= 5:
-                    result_text += "🔗 **Ссылки на подписки:**\n"
+                    result_text += "🔗 <b>Ссылки на подписки:</b>\n"
                     for i, link in enumerate(subscription_links, 1):
-                        result_text += f"`{link}`\n"
+                        result_text += f"<code>{link}</code>\n"
                 else:
-                    result_text += "🔗 **Примеры ссылок:**\n"
+                    result_text += "🔗 <b>Примеры ссылок:</b>\n"
                     for i, link in enumerate(subscription_links[:3], 1):
-                        result_text += f"`{link}`\n"
+                        result_text += f"<code>{link}</code>\n"
                     result_text += f"... и ещё {len(subscription_links) - 3}"
             else:
                 result_text = (
-                    f"❌ *Ошибка создания подписок!*\n\n"
+                    f"❌ <b>Ошибка создания подписок!</b>\n\n"
                     f"Не удалось создать ни одной подписки.\n"
                     f"Проверьте логи для подробностей."
                 )
             
             await query.edit_message_text(
                 result_text,
-                parse_mode='Markdown',
+                parse_mode='HTML',
                 reply_markup=self._get_back_to_main_keyboard(),
                 disable_web_page_preview=True
             )
@@ -314,9 +314,9 @@ class BotHandlers:
         except Exception as e:
             logger.error(f"Error creating promo campaign: {str(e)}")
             await query.edit_message_text(
-                f"❌ *Ошибка при создании кампании:*\n\n"
-                f"`{str(e)}`",
-                parse_mode='Markdown',
+                f"❌ <b>Ошибка при создании кампании:</b>\n\n"
+                f"<code>{str(e)}</code>",
+                parse_mode='HTML',
                 reply_markup=self._get_back_to_main_keyboard()
             )
         
@@ -360,16 +360,16 @@ class BotHandlers:
             keyboard.append([InlineKeyboardButton("⬅️ Назад в главное меню", callback_data="main_menu")])
             
             await query.edit_message_text(
-                "🗑 *Выберите тег для удаления использованных подписок:*",
-                parse_mode='Markdown',
+                "🗑 <b>Выберите тег для удаления использованных подписок:</b>",
+                parse_mode='HTML',
                 reply_markup=InlineKeyboardMarkup(keyboard)
             )
             
         except Exception as e:
             logger.error(f"Error getting tags: {str(e)}")
             await query.edit_message_text(
-                f"❌ Ошибка при загрузке тегов:\n`{str(e)}`",
-                parse_mode='Markdown',
+                f"❌ Ошибка при загрузке тегов:\n<code>{str(e)}</code>",
+                parse_mode='HTML',
                 reply_markup=self._get_back_to_main_keyboard()
             )
         
@@ -385,8 +385,8 @@ class BotHandlers:
         
         # Show loading message
         await query.edit_message_text(
-            f"⏳ Загрузка статистики для тега `{tag}`...",
-            parse_mode='Markdown'
+            f"⏳ Загрузка статистики для тега <code>{tag}</code>...",
+            parse_mode='HTML'
         )
         
         try:
@@ -394,8 +394,8 @@ class BotHandlers:
             
             if stats['total'] == 0:
                 await query.edit_message_text(
-                    f"❌ Подписки с тегом `{tag}` не найдены.",
-                    parse_mode='Markdown',
+                    f"❌ Подписки с тегом <code>{tag}</code> не найдены.",
+                    parse_mode='HTML',
                     reply_markup=self._get_back_to_main_keyboard()
                 )
                 return ConversationHandler.END
@@ -407,21 +407,21 @@ class BotHandlers:
             ]
             
             await query.edit_message_text(
-                f"📊 *Статистика тега:* `{tag}`\n\n"
-                f"📈 **Всего подписок:** {stats['total']}\n"
-                f"✅ **Активных:** {stats['active']}\n"
-                f"❌ **Использованных:** {stats['used']}\n\n"
-                f"⚠️ **Будет удалено:** {stats['used']} подписок\n\n"
+                f"📊 <b>Статистика тега:</b> <code>{tag}</code>\n\n"
+                f"📈 <b>Всего подписок:</b> {stats['total']}\n"
+                f"✅ <b>Активных:</b> {stats['active']}\n"
+                f"❌ <b>Использованных:</b> {stats['used']}\n\n"
+                f"⚠️ <b>Будет удалено:</b> {stats['used']} подписок\n\n"
                 f"Подтвердить удаление использованных подписок?",
-                parse_mode='Markdown',
+                parse_mode='HTML',
                 reply_markup=InlineKeyboardMarkup(confirm_keyboard)
             )
             
         except Exception as e:
             logger.error(f"Error getting tag stats: {str(e)}")
             await query.edit_message_text(
-                f"❌ Ошибка при загрузке статистики:\n`{str(e)}`",
-                parse_mode='Markdown',
+                f"❌ Ошибка при загрузке статистики:\n<code>{str(e)}</code>",
+                parse_mode='HTML',
                 reply_markup=self._get_back_to_main_keyboard()
             )
         
@@ -437,31 +437,31 @@ class BotHandlers:
         
         # Show progress message
         await query.edit_message_text(
-            f"⏳ *Удаление использованных подписок...*\n\n"
-            f"🏷 Тег: `{tag}`\n\n"
+            f"⏳ <b>Удаление использованных подписок...</b>\n\n"
+            f"🏷 Тег: <code>{tag}</code>\n\n"
             f"⚠️ Не закрывайте бота, процесс может занять некоторое время.",
-            parse_mode='Markdown'
+            parse_mode='HTML'
         )
         
         try:
             deleted_count, total_count = await self.remnawave_service.delete_used_subscriptions(tag)
             
             await query.edit_message_text(
-                f"✅ *Удаление завершено!*\n\n"
-                f"🏷 **Тег:** `{tag}`\n"
-                f"🗑 **Удалено:** {deleted_count}\n"
-                f"📊 **Всего было:** {total_count}\n"
-                f"✅ **Осталось активных:** {total_count - deleted_count}",
-                parse_mode='Markdown',
+                f"✅ <b>Удаление завершено!</b>\n\n"
+                f"🏷 <b>Тег:</b> <code>{tag}</code>\n"
+                f"🗑 <b>Удалено:</b> {deleted_count}\n"
+                f"📊 <b>Всего было:</b> {total_count}\n"
+                f"✅ <b>Осталось активных:</b> {total_count - deleted_count}",
+                parse_mode='HTML',
                 reply_markup=self._get_back_to_main_keyboard()
             )
             
         except Exception as e:
             logger.error(f"Error deleting used subscriptions: {str(e)}")
             await query.edit_message_text(
-                f"❌ *Ошибка при удалении:*\n\n"
-                f"`{str(e)}`",
-                parse_mode='Markdown',
+                f"❌ <b>Ошибка при удалении:</b>\n\n"
+                f"<code>{str(e)}</code>",
+                parse_mode='HTML',
                 reply_markup=self._get_back_to_main_keyboard()
             )
         
@@ -483,14 +483,14 @@ class BotHandlers:
             
             if not tags_with_stats:
                 await query.edit_message_text(
-                    "📊 *Статистика промо-кампаний*\n\n"
+                    "📊 <b>Статистика промо-кампаний</b>\n\n"
                     "❌ Промо-кампании не найдены.",
-                    parse_mode='Markdown',
+                    parse_mode='HTML',
                     reply_markup=self._get_back_to_main_keyboard()
                 )
                 return ConversationHandler.END
             
-            stats_text = "📊 *Статистика промо-кампаний:*\n\n"
+            stats_text = "📊 <b>Статистика промо-кампаний:</b>\n\n"
             
             total_all = 0
             total_active = 0
@@ -507,14 +507,14 @@ class BotHandlers:
                 total_used += used
                 
                 stats_text += (
-                    f"🏷 **{tag}:**\n"
+                    f"🏷 <b>{tag}:</b>\n"
                     f"  📈 Всего: {total}\n"
                     f"  ✅ Активных: {active}\n"
                     f"  ❌ Использованных: {used}\n\n"
                 )
             
             stats_text += (
-                f"📋 **Общая статистика:**\n"
+                f"📋 <b>Общая статистика:</b>\n"
                 f"📈 Всего подписок: {total_all}\n"
                 f"✅ Активных: {total_active}\n"
                 f"❌ Использованных: {total_used}"
@@ -522,15 +522,15 @@ class BotHandlers:
             
             await query.edit_message_text(
                 stats_text,
-                parse_mode='Markdown',
+                parse_mode='HTML',
                 reply_markup=self._get_back_to_main_keyboard()
             )
             
         except Exception as e:
             logger.error(f"Error getting statistics: {str(e)}")
             await query.edit_message_text(
-                f"❌ Ошибка при загрузке статистики:\n`{str(e)}`",
-                parse_mode='Markdown',
+                f"❌ Ошибка при загрузке статистики:\n<code>{str(e)}</code>",
+                parse_mode='HTML',
                 reply_markup=self._get_back_to_main_keyboard()
             )
         
@@ -551,14 +551,22 @@ class BotHandlers:
     
     async def error_handler(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         """Handle errors"""
+        error_msg = str(context.error)
         logger.error(f"Update {update} caused error {context.error}")
+        
+        # Check for specific errors
+        if "can't parse entities" in error_msg.lower():
+            logger.error("Telegram parsing error - likely formatting issue")
+        elif "bad request" in error_msg.lower():
+            logger.error("Telegram Bad Request - check message formatting")
         
         if update and update.effective_chat:
             try:
                 await context.bot.send_message(
                     chat_id=update.effective_chat.id,
                     text="❌ Произошла ошибка. Попробуйте еще раз.",
-                    reply_markup=self._get_main_menu_keyboard()
+                    reply_markup=self._get_main_menu_keyboard(),
+                    parse_mode=None  # Don't use any parsing to avoid errors
                 )
-            except Exception:
-                pass
+            except Exception as e:
+                logger.error(f"Failed to send error message: {e}")
