@@ -14,8 +14,8 @@ from config import Config
 logger = logging.getLogger(__name__)
 
 # Conversation states
-(WAITING_TAG, WAITING_COUNT, WAITING_CONFIRM_DELETE, 
- SELECTING_TAG_DELETE, SHOWING_DELETE_PREVIEW) = range(5)
+(WAITING_TAG, WAITING_TRAFFIC, WAITING_COUNT, WAITING_CONFIRM_DELETE, 
+ SELECTING_TAG_DELETE, SHOWING_DELETE_PREVIEW) = range(6)
 
 class BotHandlers:
     """Main bot handlers class"""
@@ -35,6 +35,15 @@ class BotHandlers:
                 await update.callback_query.message.delete()
             except TelegramError:
                 pass  # Message might be already deleted
+    
+    async def _delete_previous_bot_messages(self, chat_id: int, context: ContextTypes.DEFAULT_TYPE, user_session: dict):
+        """Delete previous bot messages using stored message IDs"""
+        if 'last_message_id' in user_session:
+            try:
+                await context.bot.delete_message(chat_id=chat_id, message_id=user_session['last_message_id'])
+                del user_session['last_message_id']
+            except TelegramError:
+                pass
     
     def _get_main_menu_keyboard(self) -> InlineKeyboardMarkup:
         """Get main menu inline keyboard"""
@@ -101,6 +110,10 @@ class BotHandlers:
         user_id = update.effective_user.id
         self.user_sessions[user_id] = {}
         
+        # Store the message ID for future editing/deletion
+        if query.message:
+            self.user_sessions[user_id]['last_message_id'] = query.message.message_id
+        
         await query.edit_message_text(
             "🏷 <b>Создание промо-кампании</b>\n\n"
             "Введите тег кампании:\n\n"
@@ -124,10 +137,14 @@ class BotHandlers:
         except TelegramError:
             pass
         
+        # Delete previous bot messages
+        if user_id in self.user_sessions:
+            await self._delete_previous_bot_messages(update.effective_chat.id, context, self.user_sessions[user_id])
+        
         # Validate tag
         if not self.remnawave_service._validate_tag(tag):
-            # Send new message instead of trying to edit
-            await update.effective_chat.send_message(
+            # Send new message
+            last_bot_message = await update.effective_chat.send_message(
                 text="❌ <b>Неверный формат тега!</b>\n\n"
                      "Введите тег кампании:\n\n"
                      "⚠️ <b>Требования к тегу:</b>\n"
@@ -137,20 +154,48 @@ class BotHandlers:
                 parse_mode='HTML',
                 reply_markup=self._get_back_to_main_keyboard()
             )
+            # Store message for future deletion
+            if user_id not in self.user_sessions:
+                self.user_sessions[user_id] = {}
+            self.user_sessions[user_id]['last_message_id'] = last_bot_message.message_id
             return WAITING_TAG
         
         # Store tag and ask for traffic limit
         self.user_sessions[user_id]['tag'] = tag
         
-        # Send new message for traffic limit selection
-        await update.effective_chat.send_message(
-            text=f"✅ <b>Тег:</b> <code>{tag}</code>\n\n"
-                 "📊 Выберите лимит трафика:",
-            parse_mode='HTML',
-            reply_markup=self._get_traffic_limit_keyboard()
-        )
+        # Try to edit the previous message (from create_promo_callback)
+        # If we can't edit, send a new message
+        message_text = f"✅ <b>Тег:</b> <code>{tag}</code>\n\n📊 Выберите лимит трафика:"
         
-        return ConversationHandler.END
+        try:
+            if 'last_message_id' in self.user_sessions[user_id]:
+                # Try to edit existing message
+                await context.bot.edit_message_text(
+                    chat_id=update.effective_chat.id,
+                    message_id=self.user_sessions[user_id]['last_message_id'],
+                    text=message_text,
+                    parse_mode='HTML',
+                    reply_markup=self._get_traffic_limit_keyboard()
+                )
+            else:
+                # Send new message and store its ID
+                last_bot_message = await update.effective_chat.send_message(
+                    text=message_text,
+                    parse_mode='HTML',
+                    reply_markup=self._get_traffic_limit_keyboard()
+                )
+                self.user_sessions[user_id]['last_message_id'] = last_bot_message.message_id
+        except Exception as e:
+            logger.error(f"Failed to update message: {e}")
+            # Fallback: send new message
+            last_bot_message = await update.effective_chat.send_message(
+                text=message_text,
+                parse_mode='HTML',
+                reply_markup=self._get_traffic_limit_keyboard()
+            )
+            self.user_sessions[user_id]['last_message_id'] = last_bot_message.message_id
+        
+        return WAITING_TRAFFIC
     
     async def handle_traffic_limit(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         """Handle traffic limit selection"""
@@ -188,6 +233,7 @@ class BotHandlers:
             parse_mode='HTML',
             reply_markup=self._get_back_to_main_keyboard()
         )
+        # Message ID stays the same since we're editing
         return WAITING_COUNT
     
     async def handle_count_input(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
@@ -210,12 +256,28 @@ class BotHandlers:
                 raise ValueError("Invalid count")
                 
         except ValueError:
-            await update.effective_chat.send_message(
-                text=f"❌ <b>Неверное количество!</b>\n\n"
-                     f"Введите число от 1 до {Config.MAX_SUBSCRIPTIONS_PER_REQUEST}:",
-                parse_mode='HTML',
-                reply_markup=self._get_back_to_main_keyboard()
-            )
+            # Try to edit the existing message
+            try:
+                if 'last_message_id' in self.user_sessions[user_id]:
+                    await context.bot.edit_message_text(
+                        chat_id=update.effective_chat.id,
+                        message_id=self.user_sessions[user_id]['last_message_id'],
+                        text=f"❌ <b>Неверное количество!</b>\n\n"
+                             f"Введите число от 1 до {Config.MAX_SUBSCRIPTIONS_PER_REQUEST}:",
+                        parse_mode='HTML',
+                        reply_markup=self._get_back_to_main_keyboard()
+                    )
+                else:
+                    # Fallback: send new message
+                    last_bot_message = await update.effective_chat.send_message(
+                        text=f"❌ <b>Неверное количество!</b>\n\n"
+                             f"Введите число от 1 до {Config.MAX_SUBSCRIPTIONS_PER_REQUEST}:",
+                        parse_mode='HTML',
+                        reply_markup=self._get_back_to_main_keyboard()
+                    )
+                    self.user_sessions[user_id]['last_message_id'] = last_bot_message.message_id
+            except Exception as e:
+                logger.error(f"Failed to edit message for count validation: {e}")
             return WAITING_COUNT
         
         # Store count and show confirmation
@@ -228,15 +290,39 @@ class BotHandlers:
             [InlineKeyboardButton("❌ Отменить", callback_data="main_menu")]
         ]
         
-        await update.effective_chat.send_message(
-            text=f"📋 <b>Подтверждение создания:</b>\n\n"
-                 f"🏷 <b>Тег:</b> <code>{tag}</code>\n"
-                 f"📊 <b>Лимит трафика:</b> {traffic_limit}GB\n"
-                 f"🔢 <b>Количество:</b> {count}\n\n"
-                 f"Подтвердить создание {count} подписок?",
-            parse_mode='HTML',
-            reply_markup=InlineKeyboardMarkup(confirm_keyboard)
-        )
+        confirmation_text = (f"📋 <b>Подтверждение создания:</b>\n\n"
+                            f"🏷 <b>Тег:</b> <code>{tag}</code>\n"
+                            f"📊 <b>Лимит трафика:</b> {traffic_limit}GB\n"
+                            f"🔢 <b>Количество:</b> {count}\n\n"
+                            f"Подтвердить создание {count} подписок?")
+        
+        # Try to edit existing message first
+        try:
+            if 'last_message_id' in self.user_sessions[user_id]:
+                await context.bot.edit_message_text(
+                    chat_id=update.effective_chat.id,
+                    message_id=self.user_sessions[user_id]['last_message_id'],
+                    text=confirmation_text,
+                    parse_mode='HTML',
+                    reply_markup=InlineKeyboardMarkup(confirm_keyboard)
+                )
+            else:
+                # Fallback: send new message
+                last_bot_message = await update.effective_chat.send_message(
+                    text=confirmation_text,
+                    parse_mode='HTML',
+                    reply_markup=InlineKeyboardMarkup(confirm_keyboard)
+                )
+                self.user_sessions[user_id]['last_message_id'] = last_bot_message.message_id
+        except Exception as e:
+            logger.error(f"Failed to edit confirmation message: {e}")
+            # Fallback: send new message
+            last_bot_message = await update.effective_chat.send_message(
+                text=confirmation_text,
+                parse_mode='HTML',
+                reply_markup=InlineKeyboardMarkup(confirm_keyboard)
+            )
+            self.user_sessions[user_id]['last_message_id'] = last_bot_message.message_id
         
         return ConversationHandler.END
     

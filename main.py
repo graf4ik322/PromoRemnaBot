@@ -16,7 +16,7 @@ from telegram.ext import (
     filters
 )
 from config import Config
-from bot_handlers import BotHandlers, WAITING_TAG, WAITING_COUNT
+from bot_handlers import BotHandlers, WAITING_TAG, WAITING_TRAFFIC, WAITING_COUNT
 
 # Configure logging
 def setup_logging():
@@ -82,6 +82,10 @@ class RemnawaveBot:
                         MessageHandler(filters.TEXT & ~filters.COMMAND, self.handlers.handle_tag_input),
                         CallbackQueryHandler(self.handlers.main_menu_callback, pattern='^main_menu$')
                     ],
+                    WAITING_TRAFFIC: [
+                        CallbackQueryHandler(self.handlers.handle_traffic_limit, pattern=r'^traffic_\d+$'),
+                        CallbackQueryHandler(self.handlers.main_menu_callback, pattern='^main_menu$')
+                    ],
                     WAITING_COUNT: [
                         MessageHandler(filters.TEXT & ~filters.COMMAND, self.handlers.handle_count_input),
                         CallbackQueryHandler(self.handlers.main_menu_callback, pattern='^main_menu$')
@@ -90,8 +94,6 @@ class RemnawaveBot:
                 fallbacks=[
                     CommandHandler('cancel', self.handlers.cancel_command),
                     CallbackQueryHandler(self.handlers.main_menu_callback, pattern='^main_menu$'),
-                    # Add traffic limit handler as fallback for global access
-                    CallbackQueryHandler(self.handlers.handle_traffic_limit, pattern=r'^traffic_\d+$'),
                     CallbackQueryHandler(self.handlers.confirm_create_callback, pattern='^confirm_create$')
                 ],
                 per_chat=True,
