@@ -27,14 +27,16 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy application code
 COPY . .
 
-# Create necessary directories
-RUN mkdir -p subscription_files logs
-
-# Set permissions
-RUN chown -R appuser:appuser /app
+# Create necessary directories and set permissions
+RUN mkdir -p subscription_files logs && \
+    chown -R appuser:appuser /app && \
+    chmod -R 755 /app
 
 # Switch to non-root user
 USER appuser
+
+# Ensure directories exist and are writable on startup
+RUN mkdir -p /app/logs /app/subscription_files
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \

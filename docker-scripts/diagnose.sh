@@ -205,6 +205,29 @@ check_common_issues() {
         echo -e "${YELLOW}Logs are now in logs/bot.log directory${NC}"
     fi
     
+    # Check directory permissions
+    if [ -d "logs" ]; then
+        if [ -w "logs" ]; then
+            echo -e "${GREEN}✅ logs/ directory is writable${NC}"
+        else
+            echo -e "${RED}❌ logs/ directory is not writable${NC}"
+            echo -e "${YELLOW}Fix with: chmod 755 logs/${NC}"
+        fi
+    else
+        echo -e "${YELLOW}⚠️  logs/ directory missing${NC}"
+    fi
+    
+    if [ -d "subscription_files" ]; then
+        if [ -w "subscription_files" ]; then
+            echo -e "${GREEN}✅ subscription_files/ directory is writable${NC}"
+        else
+            echo -e "${RED}❌ subscription_files/ directory is not writable${NC}"
+            echo -e "${YELLOW}Fix with: chmod 755 subscription_files/${NC}"
+        fi
+    else
+        echo -e "${YELLOW}⚠️  subscription_files/ directory missing${NC}"
+    fi
+    
     echo ""
 }
 

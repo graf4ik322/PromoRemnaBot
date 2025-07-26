@@ -21,17 +21,39 @@ from bot_handlers import BotHandlers, WAITING_TAG, WAITING_COUNT
 # Configure logging
 def setup_logging():
     """Setup logging configuration"""
-    # Ensure logs directory exists
+    # Ensure logs directory exists with proper permissions
     import os
-    os.makedirs('logs', exist_ok=True)
+    import stat
+    
+    try:
+        os.makedirs('logs', exist_ok=True)
+        # Try to set permissions (may fail in some environments)
+        try:
+            os.chmod('logs', stat.S_IRWXU | stat.S_IRWXG | stat.S_IROTH | stat.S_IXOTH)  # 755
+        except (OSError, PermissionError):
+            pass  # Ignore permission errors
+    except PermissionError:
+        print("Warning: Cannot create logs directory, using stdout only")
+        logging.basicConfig(
+            format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+            level=getattr(logging, Config.LOG_LEVEL, logging.INFO),
+            handlers=[logging.StreamHandler(sys.stdout)]
+        )
+        return
+    
+    # Try to create log file handler, fall back to stdout only if fails
+    handlers = [logging.StreamHandler(sys.stdout)]
+    
+    try:
+        file_handler = logging.FileHandler('logs/bot.log')
+        handlers.append(file_handler)
+    except (PermissionError, OSError) as e:
+        print(f"Warning: Cannot write to log file: {e}. Using stdout only.")
     
     logging.basicConfig(
         format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
         level=getattr(logging, Config.LOG_LEVEL, logging.INFO),
-        handlers=[
-            logging.FileHandler('logs/bot.log'),
-            logging.StreamHandler(sys.stdout)
-        ]
+        handlers=handlers
     )
 
 logger = logging.getLogger(__name__)

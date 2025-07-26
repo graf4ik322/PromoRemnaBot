@@ -161,9 +161,9 @@ main() {
     fix_bot_log
     clean_volumes
     
-    # Create necessary directories
-    mkdir -p subscription_files
-    mkdir -p logs
+    # Create necessary directories with proper permissions
+    mkdir -p subscription_files logs
+    chmod 755 subscription_files logs 2>/dev/null || true
     
     show_status
     

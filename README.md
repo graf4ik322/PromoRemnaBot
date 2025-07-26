@@ -330,6 +330,16 @@ rm -rf bot.log
 ./docker-scripts/start-safe.sh --prod
 ```
 
+**Ошибка "Permission denied: logs/bot.log":**
+```bash
+# Исправьте права доступа
+chmod 755 logs/
+./docker-scripts/start-safe.sh --prod
+
+# Или используйте cleanup
+./docker-scripts/cleanup.sh
+```
+
 **Docker daemon не запущен:**
 ```bash
 sudo systemctl start docker

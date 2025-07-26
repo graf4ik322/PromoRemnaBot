@@ -165,6 +165,36 @@ REMNAWAVE_TOKEN=your_api_token_here
 ADMIN_USER_IDS=123456789,987654321
 ```
 
+### Ошибка: "Permission denied" при записи логов
+
+**Симптомы:**
+```
+Fatal error: [Errno 13] Permission denied: '/app/logs/bot.log'
+```
+
+**Причина:**
+Контейнер не может записать в директорию logs/ из-за проблем с правами доступа.
+
+**Решения:**
+```bash
+# 1. Исправьте права доступа
+chmod 755 logs/ 2>/dev/null || sudo chmod 755 logs/
+
+# 2. Пересоздайте директории с правильными правами
+./docker-scripts/cleanup.sh
+
+# 3. Или создайте вручную
+rm -rf logs
+mkdir -p logs
+chmod 755 logs
+
+# 4. Запустите заново
+./docker-scripts/start-safe.sh --prod
+
+# 5. Если проблема остается, проверьте SELinux (на некоторых системах)
+sudo setsebool -P container_manage_cgroup on 2>/dev/null || true
+```
+
 ### Ошибка: "Fatal error: [Errno 21] Is a directory"
 
 **Симптомы:**

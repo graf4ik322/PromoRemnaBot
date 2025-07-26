@@ -153,6 +153,10 @@ create_directories() {
         else
             echo -e "  ${GREEN}✅ $dir exists${NC}"
         fi
+        
+        # Set proper permissions for Docker
+        chmod 755 "$dir" 2>/dev/null || true
+        echo -e "  ${GREEN}✅ Set permissions for $dir${NC}"
     done
 }
 
