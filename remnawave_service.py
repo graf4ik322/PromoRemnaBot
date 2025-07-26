@@ -65,50 +65,39 @@ class RemnawaveService:
                 username = f"{Config.DEFAULT_UUID_PREFIX}{random_suffix}-{tag}"
                 
                 try:
-                    # Based on logs, the API expects specific fields for CreateUserRequestDto:
-                    # - username (required)
-                    # - expire_at (required) 
-                    # - traffic_limit or data_limit (may vary)
-                    # - inbound_ids may not be a direct parameter
+                    # The API doesn't accept username parameter at all in create_user
+                    # We need to create user first, then update username separately
                     
-                    # Method 1: Try with correct required fields
+                    # Method 1: Try creating user with minimal parameters
                     try:
                         response = await self.sdk.users.create_user(
-                            username=username,
                             expire_at=None,  # Based on error logs, this field is required
                             traffic_limit=traffic_limit_bytes
                         )
-                        logger.info(f"Method 1 (username + expire_at + traffic_limit) succeeded")
+                        logger.info(f"Method 1 (expire_at + traffic_limit) succeeded")
                     except Exception as e1:
                         logger.warning(f"Method 1 failed: {e1}, trying method 2")
                         try:
                             # Method 2: Try with data_limit instead of traffic_limit
                             response = await self.sdk.users.create_user(
-                                username=username,
                                 expire_at=None,
                                 data_limit=traffic_limit_bytes
                             )
-                            logger.info(f"Method 2 (username + expire_at + data_limit) succeeded")
+                            logger.info(f"Method 2 (expire_at + data_limit) succeeded")
                         except Exception as e2:
                             logger.warning(f"Method 2 failed: {e2}, trying method 3")
                             try:
-                                # Method 3: Try with dict structure
-                                user_data = {
-                                    "username": username,
-                                    "expire_at": None,
-                                    "traffic_limit": traffic_limit_bytes
-                                }
-                                response = await self.sdk.users.create_user(**user_data)
-                                logger.info(f"Method 3 (dict with username + expire_at) succeeded")
+                                # Method 3: Try with minimal required fields only
+                                response = await self.sdk.users.create_user(
+                                    expire_at=None
+                                )
+                                logger.info(f"Method 3 (minimal: expire_at only) succeeded")
                             except Exception as e3:
                                 logger.warning(f"Method 3 failed: {e3}, trying method 4")
                                 try:
-                                    # Method 4: Try minimal required fields only
-                                    response = await self.sdk.users.create_user(
-                                        username=username,
-                                        expire_at=None
-                                    )
-                                    logger.info(f"Method 4 (minimal: username + expire_at) succeeded")
+                                    # Method 4: Try without any parameters
+                                    response = await self.sdk.users.create_user()
+                                    logger.info(f"Method 4 (no parameters) succeeded")
                                 except Exception as e4:
                                     # Log available methods for debugging
                                     available_methods = [m for m in dir(self.sdk.users) if not m.startswith('_')]
@@ -117,7 +106,7 @@ class RemnawaveService:
                                     raise e4
                     
                     if response:
-                        # User created successfully, username was already set during creation
+                        # User created successfully, now we need to set the username via update_user
                         try:
                             # Try to get the created user ID from response
                             user_id = None
@@ -131,20 +120,31 @@ class RemnawaveService:
                                 user_id = response['id']
                             
                             if user_id:
-                                # Try to set additional parameters after user creation if needed
+                                # Try to set username and other parameters after user creation
                                 try:
-                                    # Check if we need to set inbound_ids or data_limit separately
-                                    if hasattr(self.sdk.users, 'update_user') and Config.DEFAULT_INBOUND_IDS:
-                                        await self.sdk.users.update_user(
-                                            user_id, 
-                                            inbound_ids=Config.DEFAULT_INBOUND_IDS,
-                                            data_limit=traffic_limit_bytes
-                                        )
-                                        logger.info(f"Updated user {username} with inbound_ids and data_limit")
-                                except Exception as update_error:
-                                    logger.warning(f"Could not update user {username} with additional params: {update_error}")
+                                    if hasattr(self.sdk.users, 'update_user'):
+                                        # Try to update with username first
+                                        await self.sdk.users.update_user(user_id, username=username)
+                                        logger.info(f"Successfully set username {username} for user ID {user_id}")
+                                        
+                                        # Try to set additional parameters if needed
+                                        if Config.DEFAULT_INBOUND_IDS:
+                                            try:
+                                                await self.sdk.users.update_user(
+                                                    user_id, 
+                                                    inbound_ids=Config.DEFAULT_INBOUND_IDS,
+                                                    data_limit=traffic_limit_bytes
+                                                )
+                                                logger.info(f"Updated user {username} with inbound_ids and data_limit")
+                                            except Exception as param_error:
+                                                logger.warning(f"Could not update user {username} with additional params: {param_error}")
+                                    else:
+                                        logger.warning(f"update_user method not available, cannot set username for user ID {user_id}")
+                                        
+                                except Exception as username_error:
+                                    logger.warning(f"Could not set username {username} for user ID {user_id}: {username_error}")
                                 
-                                # Get subscription link using user_id or generated username
+                                # Get subscription link using user_id 
                                 subscription_link = await self._get_subscription_link(username, user_id)
                                 if subscription_link:
                                     subscription_links.append(subscription_link)
@@ -153,22 +153,18 @@ class RemnawaveService:
                                 else:
                                     logger.warning(f"User created but couldn't get subscription link: {username}")
                                     # Still add as created since user was created
-                                    subscription_links.append(f"User created: {username} (no subscription link)")
+                                    subscription_links.append(f"User created: {username} (ID: {user_id}, no subscription link)")
                                     created_users.append(username)
                             else:
                                 logger.warning(f"User created but couldn't get user ID from response: {response}")
-                                # Try to get subscription link by username only
-                                subscription_link = await self._get_subscription_link(username, None)
-                                if subscription_link:
-                                    subscription_links.append(subscription_link)
-                                else:
-                                    subscription_links.append(f"User created: {username} (no ID or subscription link)")
-                                created_users.append(username)
+                                # Without ID, we can't set username or get proper subscription link
+                                subscription_links.append(f"User created but no ID available (cannot set username)")
+                                created_users.append(f"user-created-{i}")  # Fallback name
                         
                         except Exception as post_create_error:
                             logger.warning(f"User created but post-creation processing failed for {username}: {post_create_error}")
                             # Still count as success since user was created
-                            subscription_links.append(f"User created: {username}")
+                            subscription_links.append(f"User created but post-processing failed: {username}")
                             created_users.append(username)
                     
                     logger.info(f"Processed user: {username}")
