@@ -189,7 +189,15 @@ python3 test_docker.py     # Docker configuration tests
 
 ### 📄 License
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+This project is licensed under the **MIT License** - see the LICENSE file for details.
+
+**MIT License Benefits:**
+- ✅ **Commercial Use Allowed** - Use in commercial projects without restrictions
+- ✅ **Modification Allowed** - Freely modify and distribute modified versions
+- ✅ **Distribution Allowed** - Share the software with anyone
+- ✅ **Private Use Allowed** - Use privately without obligation to share
+- ✅ **No Copyleft** - No requirement to open source derivative works
+- ✅ **Minimal Requirements** - Only copyright notice and license text required
 
 ---
 
