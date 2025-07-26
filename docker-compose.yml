@@ -1,4 +1,4 @@
-version: '3.8'
+version: '3.7'
 
 services:
   remnawave-bot:
@@ -32,7 +32,7 @@ services:
     
     # Health check
     healthcheck:
-      test: ["CMD", "python3", "-c", "import requests; requests.get('https://api.telegram.org')"]
+      test: ["CMD", "python3", "-c", "import requests; requests.get('https://api.telegram.org', timeout=5)"]
       interval: 30s
       timeout: 10s
       retries: 3

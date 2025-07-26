@@ -22,13 +22,37 @@ check_docker() {
         exit 1
     fi
     
-    if ! command -v docker-compose &> /dev/null && ! docker compose version &> /dev/null; then
-        echo -e "${RED}❌ Docker Compose is not installed!${NC}"
+    # Check Docker daemon is running
+    if ! docker info &> /dev/null; then
+        echo -e "${RED}❌ Docker daemon is not running!${NC}"
+        echo -e "${YELLOW}Please start Docker daemon first${NC}"
+        echo -e "${YELLOW}Try: sudo systemctl start docker${NC}"
+        exit 1
+    fi
+    
+    # Determine which Docker Compose to use
+    COMPOSE_CMD=""
+    if command -v docker-compose &> /dev/null; then
+        # Check if it's a compatible version
+        COMPOSE_VERSION=$(docker-compose --version | grep -oE "[0-9]+\.[0-9]+\.[0-9]+" | head -1)
+        MAJOR_VERSION=$(echo "$COMPOSE_VERSION" | cut -d. -f1)
+        if [ "$MAJOR_VERSION" -ge 2 ] || docker compose version &> /dev/null; then
+            COMPOSE_CMD="docker compose"
+            echo -e "${GREEN}✅ Using docker compose (v2)${NC}"
+        else
+            COMPOSE_CMD="docker-compose"
+            echo -e "${GREEN}✅ Using docker-compose (v1)${NC}"
+        fi
+    elif docker compose version &> /dev/null; then
+        COMPOSE_CMD="docker compose"
+        echo -e "${GREEN}✅ Using docker compose (v2)${NC}"
+    else
+        echo -e "${RED}❌ Docker Compose is not available!${NC}"
         echo -e "${YELLOW}Please install Docker Compose first${NC}"
         exit 1
     fi
     
-    echo -e "${GREEN}✅ Docker is installed${NC}"
+    echo -e "${GREEN}✅ Docker is running${NC}"
 }
 
 # Function to check .env file
@@ -79,11 +103,8 @@ start_containers() {
     fi
     
     # Build and start containers
-    if command -v docker-compose &> /dev/null; then
-        docker-compose -f "$compose_file" up --build -d
-    else
-        docker compose -f "$compose_file" up --build -d
-    fi
+    echo -e "${YELLOW}Running: ${COMPOSE_CMD} -f ${compose_file} up --build -d${NC}"
+    $COMPOSE_CMD -f "$compose_file" up --build -d
     
     echo -e "${GREEN}✅ Containers started successfully!${NC}"
 }
@@ -92,11 +113,7 @@ start_containers() {
 show_status() {
     echo -e "${BLUE}📊 Container Status:${NC}"
     
-    if command -v docker-compose &> /dev/null; then
-        docker-compose ps
-    else
-        docker compose ps
-    fi
+    $COMPOSE_CMD ps
     
     echo ""
     echo -e "${BLUE}📋 Container logs (last 10 lines):${NC}"
