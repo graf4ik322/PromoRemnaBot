@@ -221,21 +221,39 @@ class RemnawaveService:
                         except Exception as e:
                             logger.debug(f"Method {method_name} failed for username {username}: {e}")
             
-            # Extract subscription URL from user info
+            # Extract subscription URL from user info based on API documentation
             if user_info:
-                # Try different possible field names for subscription URL
-                for field_name in ['subscription_url', 'sub_url', 'link', 'config_url', 'vless_url']:
-                    if hasattr(user_info, field_name):
-                        url = getattr(user_info, field_name)
-                        if url:
-                            logger.debug(f"Found subscription URL in field {field_name}")
-                            return url
+                # Handle nested response structure (response.response.subscriptionUrl)
+                if hasattr(user_info, 'response'):
+                    resp_data = user_info.response
+                    if hasattr(resp_data, 'subscriptionUrl') and resp_data.subscriptionUrl:
+                        logger.debug(f"Found subscriptionUrl in response.response")
+                        return resp_data.subscriptionUrl
                 
-                # If user_info is a dict, try dict access
+                # Handle direct subscriptionUrl field
+                if hasattr(user_info, 'subscriptionUrl') and user_info.subscriptionUrl:
+                    logger.debug(f"Found subscriptionUrl in direct response")
+                    return user_info.subscriptionUrl
+                
+                # If user_info is a dict, handle nested structure
                 if isinstance(user_info, dict):
-                    for field_name in ['subscription_url', 'sub_url', 'link', 'config_url', 'vless_url']:
+                    # Check for nested response structure
+                    if 'response' in user_info and isinstance(user_info['response'], dict):
+                        subscription_url = user_info['response'].get('subscriptionUrl')
+                        if subscription_url:
+                            logger.debug(f"Found subscriptionUrl in dict response.response")
+                            return subscription_url
+                    
+                    # Check for direct subscriptionUrl
+                    subscription_url = user_info.get('subscriptionUrl')
+                    if subscription_url:
+                        logger.debug(f"Found subscriptionUrl in dict response")
+                        return subscription_url
+                    
+                    # Fallback to other possible field names for backward compatibility
+                    for field_name in ['subscription_url', 'sub_url', 'link', 'config_url']:
                         if field_name in user_info and user_info[field_name]:
-                            logger.debug(f"Found subscription URL in dict field {field_name}")
+                            logger.debug(f"Found subscription URL in fallback field {field_name}")
                             return user_info[field_name]
             
             # Fallback: construct subscription URL manually based on common patterns
