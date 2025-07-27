@@ -73,8 +73,14 @@ class RemnawaveService:
             if not self._validate_tag(tag):
                 raise ValueError("Invalid tag format. Use only latin characters, numbers, underscore and hyphen.")
             
-            # Convert GB to bytes
-            traffic_limit_bytes = traffic_limit_gb * 1024 * 1024 * 1024
+            # Convert GB to bytes (ensure we don't set 0 which means unlimited)
+            if traffic_limit_gb <= 0:
+                traffic_limit_bytes = 1024 * 1024 * 1024  # 1GB minimum if 0 or negative
+                logger.warning(f"Traffic limit was {traffic_limit_gb}GB, setting to 1GB minimum")
+            else:
+                traffic_limit_bytes = traffic_limit_gb * 1024 * 1024 * 1024
+            
+            logger.info(f"Setting traffic limit: {traffic_limit_gb}GB = {traffic_limit_bytes} bytes")
             
             subscription_links = []
             created_users = []
@@ -102,12 +108,14 @@ class RemnawaveService:
                         create_request = CreateUserRequestDto(
                             username=username,
                             expire_at=expire_at_iso,  # Required field
-                            traffic_limit_bytes=traffic_limit_bytes,  # Optional
+                            traffic_limit_bytes=traffic_limit_bytes,  # Traffic limit in bytes (not 0 = unlimited)
                             traffic_limit_strategy=TrafficLimitStrategy.NO_RESET,  # Optional enum
                             activate_all_inbounds=True,  # Optional 
                             status=UserStatus.ACTIVE,  # Optional enum
-                            tag=tag  # Add the tag parameter to the user
+                            tag=tag  # Tag for user categorization
                         )
+                        
+                        logger.info(f"Creating user {username} with tag='{tag}', traffic_limit={traffic_limit_bytes} bytes")
                         
                         response = await self.sdk.users.create_user(body=create_request)
                         logger.info(f"User creation succeeded with full parameters")
@@ -119,8 +127,11 @@ class RemnawaveService:
                             # Try with only required fields
                             create_request = CreateUserRequestDto(
                                 username=username,
-                                expire_at=expire_at_iso  # Fixed: use expire_at instead of expireAt
+                                expire_at=expire_at_iso,  # Required field
+                                tag=tag  # Always include tag
                             )
+                            
+                            logger.info(f"Fallback: Creating user {username} with minimal fields, tag='{tag}'")
                             
                             response = await self.sdk.users.create_user(body=create_request)
                             logger.info(f"User creation succeeded with minimal parameters")
