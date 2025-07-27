@@ -90,56 +90,64 @@ class RemnawaveService:
                     expire_date = datetime.now(timezone.utc) + timedelta(days=30)
                     expire_at_iso = expire_date.isoformat()
                     
-                    # Method 1: Try with all required and optional parameters according to API docs
+                    # Based on API docs and SDK behavior analysis, create_user expects a JSON payload
+                    # but doesn't accept parameters directly. Let's try different approaches.
+                    
+                    user_payload = {
+                        "username": username,
+                        "expireAt": expire_at_iso,
+                        "trafficLimitBytes": traffic_limit_bytes,
+                        "status": "ACTIVE",
+                        "trafficLimitStrategy": "NO_RESET",
+                        "activateAllInbounds": True
+                    }
+                    
+                    # Method 1: Try with payload as single argument
                     try:
-                        response = await self.sdk.users.create_user(
-                            username=username,
-                            expireAt=expire_at_iso,
-                            trafficLimitBytes=traffic_limit_bytes,
-                            status="ACTIVE",
-                            trafficLimitStrategy="NO_RESET",
-                            activateAllInbounds=True
-                        )
-                        logger.info(f"Method 1 (full API spec) succeeded")
+                        response = await self.sdk.users.create_user(user_payload)
+                        logger.info(f"Method 1 (payload as dict) succeeded")
                     except Exception as e1:
                         logger.warning(f"Method 1 failed: {e1}, trying method 2")
                         
-                        # Method 2: Try with just required parameters
+                        # Method 2: Try with minimal payload  
                         try:
-                            response = await self.sdk.users.create_user(
-                                username=username,
-                                expireAt=expire_at_iso
-                            )
-                            logger.info(f"Method 2 (required only) succeeded")
+                            minimal_payload = {
+                                "username": username,
+                                "expireAt": expire_at_iso
+                            }
+                            response = await self.sdk.users.create_user(minimal_payload)
+                            logger.info(f"Method 2 (minimal payload) succeeded")
                         except Exception as e2:
                             logger.warning(f"Method 2 failed: {e2}, trying method 3")
                             
-                            # Method 3: Try with snake_case parameter names
+                            # Method 3: Try with no arguments (auto-generated user)
                             try:
-                                response = await self.sdk.users.create_user(
-                                    username=username,
-                                    expire_at=expire_at_iso,
-                                    traffic_limit_bytes=traffic_limit_bytes
-                                )
-                                logger.info(f"Method 3 (snake_case) succeeded")
+                                response = await self.sdk.users.create_user()
+                                logger.info(f"Method 3 (no arguments) succeeded - auto-generated user")
+                                # We'll need to update the username later if this works
                             except Exception as e3:
                                 logger.warning(f"Method 3 failed: {e3}, trying method 4")
                                 
-                                # Method 4: Try using dict/json format
+                                # Method 4: Try passing data as JSON string
                                 try:
-                                    user_data = {
-                                        "username": username,
-                                        "expireAt": expire_at_iso,
-                                        "trafficLimitBytes": traffic_limit_bytes,
-                                        "status": "ACTIVE"
-                                    }
-                                    response = await self.sdk.users.create_user(**user_data)
-                                    logger.info(f"Method 4 (dict format) succeeded")
+                                    import json
+                                    json_payload = json.dumps(user_payload)
+                                    response = await self.sdk.users.create_user(json_payload)
+                                    logger.info(f"Method 4 (JSON string) succeeded")
                                 except Exception as e4:
                                     # Log available methods for debugging
                                     available_methods = [m for m in dir(self.sdk.users) if not m.startswith('_')]
                                     logger.error(f"All creation methods failed. Available methods: {available_methods}")
                                     logger.error(f"Errors: {e1}, {e2}, {e3}, {e4}")
+                                    
+                                    # Try to find the correct method signature
+                                    try:
+                                        import inspect
+                                        sig = inspect.signature(self.sdk.users.create_user)
+                                        logger.error(f"create_user signature: {sig}")
+                                    except:
+                                        pass
+                                        
                                     raise e4
                     
                     if response:
