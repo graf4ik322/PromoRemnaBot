@@ -9,9 +9,9 @@ from dotenv import load_dotenv
 load_dotenv()
 
 def _parse_inbound_ids(env_value):
-    """Parse inbound IDs, supporting both numeric IDs and UUIDs"""
+    """Parse inbound IDs as strings (UUIDs or numeric IDs converted to strings)"""
     if not env_value:
-        return [1]
+        return ["1"]  # Default as string
     
     ids = []
     for x in env_value.split(','):
@@ -19,15 +19,12 @@ def _parse_inbound_ids(env_value):
         if not x:
             continue
         
-        # Try to parse as integer first
-        try:
-            ids.append(int(x))
-        except ValueError:
-            # If not an integer, treat as UUID string
-            if len(x) > 0:  # Basic validation - not empty
-                ids.append(x)
+        # Always store as string (API expects List[str])
+        # Both numeric IDs and UUIDs will be strings
+        if len(x) > 0:  # Basic validation - not empty
+            ids.append(x)
                 
-    return ids if ids else [1]
+    return ids if ids else ["1"]  # Fallback as string
 
 class Config:
     """Configuration class for the bot"""
