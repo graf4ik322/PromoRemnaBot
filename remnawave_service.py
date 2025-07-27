@@ -298,13 +298,26 @@ class RemnawaveService:
             # Get all users
             users_response = await self.sdk.users.get_all_users_v2()
             
-            if not users_response or not users_response.users:
+            # Handle API response structure: response.users[]
+            users_list = []
+            if users_response:
+                if hasattr(users_response, 'response') and hasattr(users_response.response, 'users'):
+                    users_list = users_response.response.users
+                elif hasattr(users_response, 'users'):
+                    users_list = users_response.users
+                elif isinstance(users_response, dict):
+                    if 'response' in users_response and 'users' in users_response['response']:
+                        users_list = users_response['response']['users']
+                    elif 'users' in users_response:
+                        users_list = users_response['users']
+            
+            if not users_list:
                 return []
             
             # Group users by tag
             tag_stats = {}
             
-            for user in users_response.users:
+            for user in users_list:
                 username = getattr(user, 'username', '')
                 
                 # Extract tag from username (assuming format: promo-{random}-{tag})
@@ -323,12 +336,14 @@ class RemnawaveService:
                         
                         tag_stats[tag]['total'] += 1
                         
-                        # Check if user is active (not disabled and has remaining traffic)
-                        if not getattr(user, 'disabled', False):
-                            used_traffic = getattr(user, 'used_traffic', 0)
-                            traffic_limit = getattr(user, 'traffic_limit', 0)
-                            
-                            if used_traffic < traffic_limit:
+                        # Check if user is active based on API documentation fields
+                        status = getattr(user, 'status', 'ACTIVE')
+                        used_traffic = getattr(user, 'usedTrafficBytes', 0)
+                        traffic_limit = getattr(user, 'trafficLimitBytes', 0)
+                        
+                        # User is active if status is ACTIVE and has remaining traffic
+                        if status == 'ACTIVE':
+                            if traffic_limit == 0 or used_traffic < traffic_limit:  # 0 means unlimited
                                 tag_stats[tag]['active'] += 1
                             else:
                                 tag_stats[tag]['used'] += 1
@@ -352,14 +367,27 @@ class RemnawaveService:
             # Get all users
             users_response = await self.sdk.users.get_all_users_v2()
             
-            if not users_response or not users_response.users:
+            # Handle API response structure: response.users[]
+            users_list = []
+            if users_response:
+                if hasattr(users_response, 'response') and hasattr(users_response.response, 'users'):
+                    users_list = users_response.response.users
+                elif hasattr(users_response, 'users'):
+                    users_list = users_response.users
+                elif isinstance(users_response, dict):
+                    if 'response' in users_response and 'users' in users_response['response']:
+                        users_list = users_response['response']['users']
+                    elif 'users' in users_response:
+                        users_list = users_response['users']
+            
+            if not users_list:
                 return 0, 0
             
             tag_users = []
             deleted_count = 0
             
             # Find users with the specified tag
-            for user in users_response.users:
+            for user in users_list:
                 username = getattr(user, 'username', '')
                 
                 if username.startswith(Config.DEFAULT_UUID_PREFIX):
@@ -370,19 +398,26 @@ class RemnawaveService:
                         if user_tag == tag:
                             tag_users.append(user)
                             
-                            # Check if user is "used" (disabled or traffic limit exceeded)
-                            used_traffic = getattr(user, 'used_traffic', 0)
-                            traffic_limit = getattr(user, 'traffic_limit', 0)
-                            is_disabled = getattr(user, 'disabled', False)
+                            # Check if user is "used" based on API documentation fields
+                            status = getattr(user, 'status', 'ACTIVE')
+                            used_traffic = getattr(user, 'usedTrafficBytes', 0)
+                            traffic_limit = getattr(user, 'trafficLimitBytes', 0)
+                            user_uuid = getattr(user, 'uuid', None)
                             
-                            if is_disabled or used_traffic >= traffic_limit:
+                            # User is considered "used" if not ACTIVE or traffic limit exceeded
+                            is_used = (status != 'ACTIVE' or 
+                                     (traffic_limit > 0 and used_traffic >= traffic_limit))
+                            
+                            if is_used and user_uuid:
                                 # Delete used subscription
                                 try:
-                                    await self.sdk.users.delete_user(getattr(user, 'id', None))
+                                    await self.sdk.users.delete_user(user_uuid)
                                     deleted_count += 1
-                                    logger.info(f"Deleted used subscription: {username}")
+                                    logger.info(f"Deleted used subscription: {username} (UUID: {user_uuid})")
                                 except Exception as e:
-                                    logger.error(f"Failed to delete user {username}: {str(e)}")
+                                    logger.error(f"Failed to delete user {username} (UUID: {user_uuid}): {str(e)}")
+                            elif is_used and not user_uuid:
+                                logger.warning(f"Cannot delete user {username}: no UUID found")
             
             total_count = len(tag_users)
             logger.info(f"Deleted {deleted_count} out of {total_count} users for tag '{tag}'")
