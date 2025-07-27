@@ -94,15 +94,18 @@ class RemnawaveService:
                     # Method signature: create_user(body: CreateUserRequestDto) -> UserResponseDto
                     
                     from remnawave_api.models import CreateUserRequestDto
+                    from remnawave_api.enums import UserStatus, TrafficLimitStrategy
                     
                     # Create the request DTO with proper structure
                     try:
-                        # Create Pydantic model instance with all required fields
+                        # Create Pydantic model instance with all required fields based on actual model structure
                         create_request = CreateUserRequestDto(
                             username=username,
-                            expire_at=expire_at_iso,  # Fixed: use expire_at instead of expireAt
-                            traffic_limit_bytes=traffic_limit_bytes,  # Also check this field name
-                            status="ACTIVE"
+                            expire_at=expire_at_iso,  # Required field
+                            traffic_limit_bytes=traffic_limit_bytes,  # Optional
+                            traffic_limit_strategy=TrafficLimitStrategy.NO_RESET,  # Optional enum
+                            activate_all_inbounds=True,  # Optional 
+                            status=UserStatus.ACTIVE  # Optional enum
                         )
                         
                         response = await self.sdk.users.create_user(body=create_request)
