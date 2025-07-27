@@ -129,12 +129,12 @@ class RemnawaveService:
                             expire_at=expire_at_iso,  # Required field
                             traffic_limit_bytes=traffic_limit_bytes,  # Traffic limit in bytes (not 0 = unlimited)
                             traffic_limit_strategy=TrafficLimitStrategy.NO_RESET,  # Optional enum
-                            activate_all_inbounds=True,  # Optional 
+                            active_user_inbounds=Config.DEFAULT_INBOUND_IDS,  # Use specific inbound UUIDs from .env
                             status=UserStatus.ACTIVE,  # Optional enum
                             tag=normalized_tag  # Tag for user categorization (UPPERCASE)
                         )
                         
-                        logger.info(f"Creating user {username} with tag='{normalized_tag}', traffic_limit={traffic_limit_gb}GB ({traffic_limit_bytes} bytes), expiry={expire_date.strftime('%Y-%m-%d')}")
+                        logger.info(f"Creating user {username} with tag='{normalized_tag}', traffic_limit={traffic_limit_gb}GB ({traffic_limit_bytes} bytes), expiry={expire_date.strftime('%Y-%m-%d')}, inbounds={Config.DEFAULT_INBOUND_IDS}")
                         
                         response = await self.sdk.users.create_user(body=create_request)
                         logger.info(f"User creation succeeded with full parameters")
