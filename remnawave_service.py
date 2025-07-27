@@ -90,65 +90,55 @@ class RemnawaveService:
                     expire_date = datetime.now(timezone.utc) + timedelta(days=30)
                     expire_at_iso = expire_date.isoformat()
                     
-                    # Based on API docs and SDK behavior analysis, create_user expects a JSON payload
-                    # but doesn't accept parameters directly. Let's try different approaches.
+                    # Based on SDK source code analysis: create_user expects a Pydantic body
+                    # Method signature: create_user(body: CreateUserRequestDto) -> UserResponseDto
                     
-                    user_payload = {
-                        "username": username,
-                        "expireAt": expire_at_iso,
-                        "trafficLimitBytes": traffic_limit_bytes,
-                        "status": "ACTIVE",
-                        "trafficLimitStrategy": "NO_RESET",
-                        "activateAllInbounds": True
-                    }
+                    from remnawave_api.models import CreateUserRequestDto
                     
-                    # Method 1: Try with payload as single argument
+                    # Create the request DTO with proper structure
                     try:
-                        response = await self.sdk.users.create_user(user_payload)
-                        logger.info(f"Method 1 (payload as dict) succeeded")
-                    except Exception as e1:
-                        logger.warning(f"Method 1 failed: {e1}, trying method 2")
+                        # Create Pydantic model instance with all required fields
+                        create_request = CreateUserRequestDto(
+                            username=username,
+                            expireAt=expire_at_iso,
+                            trafficLimitBytes=traffic_limit_bytes,
+                            status="ACTIVE",
+                            trafficLimitStrategy="NO_RESET",
+                            activateAllInbounds=True
+                        )
                         
-                        # Method 2: Try with minimal payload  
+                        response = await self.sdk.users.create_user(body=create_request)
+                        logger.info(f"User creation succeeded with full parameters")
+                        
+                    except Exception as e1:
+                        logger.warning(f"Full parameters failed: {e1}, trying minimal")
+                        
                         try:
-                            minimal_payload = {
-                                "username": username,
-                                "expireAt": expire_at_iso
-                            }
-                            response = await self.sdk.users.create_user(minimal_payload)
-                            logger.info(f"Method 2 (minimal payload) succeeded")
-                        except Exception as e2:
-                            logger.warning(f"Method 2 failed: {e2}, trying method 3")
+                            # Try with only required fields
+                            create_request = CreateUserRequestDto(
+                                username=username,
+                                expireAt=expire_at_iso
+                            )
                             
-                            # Method 3: Try with no arguments (auto-generated user)
+                            response = await self.sdk.users.create_user(body=create_request)
+                            logger.info(f"User creation succeeded with minimal parameters")
+                            
+                        except Exception as e2:
+                            logger.error(f"All creation attempts failed: {e1}, {e2}")
+                            
+                            # Log available methods for debugging
+                            available_methods = [m for m in dir(self.sdk.users) if not m.startswith('_')]
+                            logger.error(f"Available methods: {available_methods}")
+                            
+                            # Try to find the correct method signature
                             try:
-                                response = await self.sdk.users.create_user()
-                                logger.info(f"Method 3 (no arguments) succeeded - auto-generated user")
-                                # We'll need to update the username later if this works
-                            except Exception as e3:
-                                logger.warning(f"Method 3 failed: {e3}, trying method 4")
+                                import inspect
+                                sig = inspect.signature(self.sdk.users.create_user)
+                                logger.error(f"create_user signature: {sig}")
+                            except:
+                                pass
                                 
-                                # Method 4: Try passing data as JSON string
-                                try:
-                                    import json
-                                    json_payload = json.dumps(user_payload)
-                                    response = await self.sdk.users.create_user(json_payload)
-                                    logger.info(f"Method 4 (JSON string) succeeded")
-                                except Exception as e4:
-                                    # Log available methods for debugging
-                                    available_methods = [m for m in dir(self.sdk.users) if not m.startswith('_')]
-                                    logger.error(f"All creation methods failed. Available methods: {available_methods}")
-                                    logger.error(f"Errors: {e1}, {e2}, {e3}, {e4}")
-                                    
-                                    # Try to find the correct method signature
-                                    try:
-                                        import inspect
-                                        sig = inspect.signature(self.sdk.users.create_user)
-                                        logger.error(f"create_user signature: {sig}")
-                                    except:
-                                        pass
-                                        
-                                    raise e4
+                            raise e2
                     
                     if response:
                         # User created successfully with username already set
