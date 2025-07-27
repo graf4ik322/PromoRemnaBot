@@ -232,23 +232,73 @@ class RemnawaveService:
                 logger.warning(f"Could not extract shortUuid for user {username}")
                 return None
             
-            # Try to get subscription info using shortUuid
-            if hasattr(self.sdk, 'subscription') and hasattr(self.sdk.subscription, 'get_subscription_info'):
+            # Get subscription info using user UUID (not shortUuid)
+            # First try to get user by UUID to get full user data
+            if user_id:
                 try:
-                    subscription_info = await self.sdk.subscription.get_subscription_info(short_uuid)
-                    if subscription_info and hasattr(subscription_info, 'subscription_url'):
-                        return subscription_info.subscription_url
-                    elif isinstance(subscription_info, dict) and 'subscription_url' in subscription_info:
-                        return subscription_info['subscription_url']
+                    user_data = await self.sdk.users.get_user_by_uuid(user_id)
+                    if user_data:
+                        # Extract subscription URL from user data
+                        subscription_url = None
+                        
+                        if hasattr(user_data, 'response'):
+                            resp_data = user_data.response
+                            if hasattr(resp_data, 'subscription_url'):
+                                subscription_url = resp_data.subscription_url
+                            elif hasattr(resp_data, 'subscriptionUrl'):
+                                subscription_url = resp_data.subscriptionUrl
+                        elif hasattr(user_data, 'subscription_url'):
+                            subscription_url = user_data.subscription_url
+                        elif hasattr(user_data, 'subscriptionUrl'):
+                            subscription_url = user_data.subscriptionUrl
+                        elif isinstance(user_data, dict):
+                            if 'response' in user_data:
+                                resp_data = user_data['response']
+                                subscription_url = resp_data.get('subscription_url') or resp_data.get('subscriptionUrl')
+                            else:
+                                subscription_url = user_data.get('subscription_url') or user_data.get('subscriptionUrl')
+                        
+                        if subscription_url:
+                            logger.info(f"Got subscription URL from API for {username}: {subscription_url}")
+                            return subscription_url
+                            
                 except Exception as e:
-                    logger.debug(f"Failed to get subscription info for {short_uuid}: {e}")
+                    logger.warning(f"Failed to get user data by UUID {user_id}: {e}")
             
-            # If subscription API is not available, construct the URL manually
-            # Based on the pattern: https://sub.edencore.cc/{shortUuid}
-            base_url = Config.REMNAWAVE_BASE_URL.replace('manage.', 'sub.').replace(':3000', '').rstrip('/')
-            real_subscription_url = f"{base_url}/{short_uuid}"
-            logger.info(f"Constructed subscription URL for {username}: {real_subscription_url}")
-            return real_subscription_url
+            # Try by shortUuid if available
+            if short_uuid:
+                try:
+                    user_data = await self.sdk.users.get_user_by_short_uuid(short_uuid)
+                    if user_data:
+                        # Extract subscription URL from user data
+                        subscription_url = None
+                        
+                        if hasattr(user_data, 'response'):
+                            resp_data = user_data.response
+                            if hasattr(resp_data, 'subscription_url'):
+                                subscription_url = resp_data.subscription_url
+                            elif hasattr(resp_data, 'subscriptionUrl'):
+                                subscription_url = resp_data.subscriptionUrl
+                        elif hasattr(user_data, 'subscription_url'):
+                            subscription_url = user_data.subscription_url
+                        elif hasattr(user_data, 'subscriptionUrl'):
+                            subscription_url = user_data.subscriptionUrl
+                        elif isinstance(user_data, dict):
+                            if 'response' in user_data:
+                                resp_data = user_data['response']
+                                subscription_url = resp_data.get('subscription_url') or resp_data.get('subscriptionUrl')
+                            else:
+                                subscription_url = user_data.get('subscription_url') or user_data.get('subscriptionUrl')
+                        
+                        if subscription_url:
+                            logger.info(f"Got subscription URL from API by shortUuid for {username}: {subscription_url}")
+                            return subscription_url
+                            
+                except Exception as e:
+                    logger.warning(f"Failed to get user data by shortUuid {short_uuid}: {e}")
+            
+            logger.warning(f"Could not get subscription URL from API for user {username}")
+            return None
             
         except Exception as e:
             logger.error(f"Failed to get real subscription URL for {username}: {str(e)}")
