@@ -49,12 +49,25 @@ class RemnawaveService:
         return users_list or []
     
     def _validate_tag(self, tag: str) -> bool:
-        """Validate tag format (only latin characters, snake_case for spaces)"""
+        """Validate tag format - API requires UPPERCASE letters, numbers, underscores only"""
         if not tag:
             return False
-        # Allow latin letters, numbers, underscore and hyphen
-        allowed_chars = set(string.ascii_letters + string.digits + '_-')
+        # API requirement: only UPPERCASE letters, numbers, underscores (no lowercase, no hyphens)
+        allowed_chars = set(string.ascii_uppercase + string.digits + '_')
         return all(c in allowed_chars for c in tag)
+    
+    def _normalize_tag(self, tag: str) -> str:
+        """Normalize tag to meet API requirements: UPPERCASE, replace invalid chars with underscore"""
+        if not tag:
+            return ""
+        # Convert to uppercase and replace invalid characters with underscores
+        normalized = ""
+        for c in tag.upper():
+            if c in string.ascii_uppercase or c in string.digits or c == '_':
+                normalized += c
+            else:
+                normalized += '_'  # Replace invalid chars (spaces, hyphens, etc.) with underscore
+        return normalized
     
     async def create_promo_users(self, tag: str, traffic_limit_gb: int, count: int) -> Tuple[List[str], str]:
         """
@@ -69,9 +82,14 @@ class RemnawaveService:
             Tuple of (subscription_links, file_url)
         """
         try:
-            # Validate tag
-            if not self._validate_tag(tag):
-                raise ValueError("Invalid tag format. Use only latin characters, numbers, underscore and hyphen.")
+            # Normalize tag to meet API requirements (UPPERCASE, numbers, underscores only)
+            normalized_tag = self._normalize_tag(tag)
+            
+            # Validate normalized tag
+            if not self._validate_tag(normalized_tag):
+                raise ValueError(f"Invalid tag format after normalization. Original: '{tag}', Normalized: '{normalized_tag}'. Use only UPPERCASE letters, numbers, underscores.")
+            
+            logger.info(f"Tag normalized: '{tag}' → '{normalized_tag}'")
             
             # Convert GB to bytes (ensure we don't set 0 which means unlimited)
             if traffic_limit_gb <= 0:
@@ -88,7 +106,7 @@ class RemnawaveService:
             for i in range(count):
                 # Generate unique username
                 random_suffix = self._generate_random_suffix()
-                username = f"{Config.DEFAULT_UUID_PREFIX}{random_suffix}-{tag}"
+                username = f"{Config.DEFAULT_UUID_PREFIX}{random_suffix}-{normalized_tag.lower()}"
                 
                 try:
                     # Based on API documentation, username and expireAt are required fields
@@ -112,10 +130,10 @@ class RemnawaveService:
                             traffic_limit_strategy=TrafficLimitStrategy.NO_RESET,  # Optional enum
                             activate_all_inbounds=True,  # Optional 
                             status=UserStatus.ACTIVE,  # Optional enum
-                            tag=tag  # Tag for user categorization
+                            tag=normalized_tag  # Tag for user categorization (UPPERCASE)
                         )
                         
-                        logger.info(f"Creating user {username} with tag='{tag}', traffic_limit={traffic_limit_bytes} bytes")
+                        logger.info(f"Creating user {username} with tag='{normalized_tag}', traffic_limit={traffic_limit_bytes} bytes")
                         
                         response = await self.sdk.users.create_user(body=create_request)
                         logger.info(f"User creation succeeded with full parameters")
@@ -128,10 +146,10 @@ class RemnawaveService:
                             create_request = CreateUserRequestDto(
                                 username=username,
                                 expire_at=expire_at_iso,  # Required field
-                                tag=tag  # Always include tag
+                                tag=normalized_tag  # Always include tag (UPPERCASE)
                             )
                             
-                            logger.info(f"Fallback: Creating user {username} with minimal fields, tag='{tag}'")
+                            logger.info(f"Fallback: Creating user {username} with minimal fields, tag='{normalized_tag}'")
                             
                             response = await self.sdk.users.create_user(body=create_request)
                             logger.info(f"User creation succeeded with minimal parameters")
@@ -205,10 +223,10 @@ class RemnawaveService:
                     logger.error(f"Failed to create user {username}: {str(e)}")
                     continue
             
-            # Generate file with subscription links
+            # Generate file with subscription links (use original tag for filename)
             file_url = await self._generate_subscription_file(tag, subscription_links)
             
-            logger.info(f"Successfully created {len(created_users)} users for tag '{tag}'")
+            logger.info(f"Successfully created {len(created_users)} users for tag '{normalized_tag}' (original: '{tag}')")
             return subscription_links, file_url
             
         except Exception as e:

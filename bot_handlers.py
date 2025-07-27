@@ -141,16 +141,20 @@ class BotHandlers:
         if user_id in self.user_sessions:
             await self._delete_previous_bot_messages(update.effective_chat.id, context, self.user_sessions[user_id])
         
-        # Validate tag
-        if not self.remnawave_service._validate_tag(tag):
+        # Normalize tag to meet API requirements
+        normalized_tag = self.remnawave_service._normalize_tag(tag)
+        
+        # Validate normalized tag
+        if not self.remnawave_service._validate_tag(normalized_tag):
             # Send new message
             last_bot_message = await update.effective_chat.send_message(
                 text="❌ <b>Неверный формат тега!</b>\n\n"
                      "Введите тег кампании:\n\n"
                      "⚠️ <b>Требования к тегу:</b>\n"
-                     "• Только латинские буквы\n"
-                     "• Цифры, подчеркивания и дефисы разрешены\n"
-                     "• Пробелы заменяйте на подчеркивания",
+                     "• Только ЗАГЛАВНЫЕ латинские буквы\n"
+                     "• Цифры и подчеркивания разрешены\n"
+                     "• Пробелы будут заменены на подчеркивания\n"
+                     "• Строчные буквы будут преобразованы в заглавные",
                 parse_mode='HTML',
                 reply_markup=self._get_back_to_main_keyboard()
             )
@@ -160,12 +164,15 @@ class BotHandlers:
             self.user_sessions[user_id]['last_message_id'] = last_bot_message.message_id
             return WAITING_TAG
         
-        # Store tag and ask for traffic limit
-        self.user_sessions[user_id]['tag'] = tag
+        # Store normalized tag and ask for traffic limit  
+        self.user_sessions[user_id]['tag'] = normalized_tag
         
         # Try to edit the previous message (from create_promo_callback)
         # If we can't edit, send a new message
-        message_text = f"✅ <b>Тег:</b> <code>{tag}</code>\n\n📊 Выберите лимит трафика:"
+        if tag != normalized_tag:
+            message_text = f"✅ <b>Тег нормализован:</b> <code>{tag}</code> → <code>{normalized_tag}</code>\n\n📊 Выберите лимит трафика:"
+        else:
+            message_text = f"✅ <b>Тег:</b> <code>{normalized_tag}</code>\n\n📊 Выберите лимит трафика:"
         
         try:
             if 'last_message_id' in self.user_sessions[user_id]:
