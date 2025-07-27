@@ -6,6 +6,7 @@ import asyncio
 import logging
 import random
 import string
+from datetime import datetime, timedelta, timezone
 from typing import List, Dict, Any, Tuple, Optional
 from remnawave_api import RemnawaveSDK
 from config import Config
@@ -65,39 +66,56 @@ class RemnawaveService:
                 username = f"{Config.DEFAULT_UUID_PREFIX}{random_suffix}-{tag}"
                 
                 try:
-                    # The API doesn't accept username parameter at all in create_user
-                    # We need to create user first, then update username separately
+                    # Based on API documentation, username and expireAt are required fields
+                    # Generate a proper expiration date (e.g., 30 days from now)
+                    expire_date = datetime.now(timezone.utc) + timedelta(days=30)
+                    expire_at_iso = expire_date.isoformat()
                     
-                    # Method 1: Try creating user with minimal parameters
+                    # Method 1: Try with all required and optional parameters according to API docs
                     try:
                         response = await self.sdk.users.create_user(
-                            expire_at=None,  # Based on error logs, this field is required
-                            traffic_limit=traffic_limit_bytes
+                            username=username,
+                            expireAt=expire_at_iso,
+                            trafficLimitBytes=traffic_limit_bytes,
+                            status="ACTIVE",
+                            trafficLimitStrategy="NO_RESET",
+                            activateAllInbounds=True
                         )
-                        logger.info(f"Method 1 (expire_at + traffic_limit) succeeded")
+                        logger.info(f"Method 1 (full API spec) succeeded")
                     except Exception as e1:
                         logger.warning(f"Method 1 failed: {e1}, trying method 2")
+                        
+                        # Method 2: Try with just required parameters
                         try:
-                            # Method 2: Try with data_limit instead of traffic_limit
                             response = await self.sdk.users.create_user(
-                                expire_at=None,
-                                data_limit=traffic_limit_bytes
+                                username=username,
+                                expireAt=expire_at_iso
                             )
-                            logger.info(f"Method 2 (expire_at + data_limit) succeeded")
+                            logger.info(f"Method 2 (required only) succeeded")
                         except Exception as e2:
                             logger.warning(f"Method 2 failed: {e2}, trying method 3")
+                            
+                            # Method 3: Try with snake_case parameter names
                             try:
-                                # Method 3: Try with minimal required fields only
                                 response = await self.sdk.users.create_user(
-                                    expire_at=None
+                                    username=username,
+                                    expire_at=expire_at_iso,
+                                    traffic_limit_bytes=traffic_limit_bytes
                                 )
-                                logger.info(f"Method 3 (minimal: expire_at only) succeeded")
+                                logger.info(f"Method 3 (snake_case) succeeded")
                             except Exception as e3:
                                 logger.warning(f"Method 3 failed: {e3}, trying method 4")
+                                
+                                # Method 4: Try using dict/json format
                                 try:
-                                    # Method 4: Try without any parameters
-                                    response = await self.sdk.users.create_user()
-                                    logger.info(f"Method 4 (no parameters) succeeded")
+                                    user_data = {
+                                        "username": username,
+                                        "expireAt": expire_at_iso,
+                                        "trafficLimitBytes": traffic_limit_bytes,
+                                        "status": "ACTIVE"
+                                    }
+                                    response = await self.sdk.users.create_user(**user_data)
+                                    logger.info(f"Method 4 (dict format) succeeded")
                                 except Exception as e4:
                                     # Log available methods for debugging
                                     available_methods = [m for m in dir(self.sdk.users) if not m.startswith('_')]
@@ -106,65 +124,55 @@ class RemnawaveService:
                                     raise e4
                     
                     if response:
-                        # User created successfully, now we need to set the username via update_user
+                        # User created successfully with username already set
                         try:
-                            # Try to get the created user ID from response
+                            # Try to extract subscription URL and user ID from response
                             user_id = None
-                            if hasattr(response, 'id'):
-                                user_id = response.id
-                            elif hasattr(response, 'data') and hasattr(response.data, 'id'):
-                                user_id = response.data.id
-                            elif hasattr(response, 'data') and isinstance(response.data, dict) and 'id' in response.data:
-                                user_id = response.data['id']
-                            elif isinstance(response, dict) and 'id' in response:
-                                user_id = response['id']
+                            subscription_url = None
                             
-                            if user_id:
-                                # Try to set username and other parameters after user creation
-                                try:
-                                    if hasattr(self.sdk.users, 'update_user'):
-                                        # Try to update with username first
-                                        await self.sdk.users.update_user(user_id, username=username)
-                                        logger.info(f"Successfully set username {username} for user ID {user_id}")
-                                        
-                                        # Try to set additional parameters if needed
-                                        if Config.DEFAULT_INBOUND_IDS:
-                                            try:
-                                                await self.sdk.users.update_user(
-                                                    user_id, 
-                                                    inbound_ids=Config.DEFAULT_INBOUND_IDS,
-                                                    data_limit=traffic_limit_bytes
-                                                )
-                                                logger.info(f"Updated user {username} with inbound_ids and data_limit")
-                                            except Exception as param_error:
-                                                logger.warning(f"Could not update user {username} with additional params: {param_error}")
-                                    else:
-                                        logger.warning(f"update_user method not available, cannot set username for user ID {user_id}")
-                                        
-                                except Exception as username_error:
-                                    logger.warning(f"Could not set username {username} for user ID {user_id}: {username_error}")
-                                
-                                # Get subscription link using user_id 
+                            # Extract data from response based on API documentation structure
+                            if hasattr(response, 'response'):
+                                # Response has nested response object (as per API docs)
+                                resp_data = response.response
+                                if hasattr(resp_data, 'uuid'):
+                                    user_id = resp_data.uuid
+                                if hasattr(resp_data, 'subscriptionUrl'):
+                                    subscription_url = resp_data.subscriptionUrl
+                            elif hasattr(response, 'uuid'):
+                                user_id = response.uuid
+                                if hasattr(response, 'subscriptionUrl'):
+                                    subscription_url = response.subscriptionUrl
+                            elif isinstance(response, dict):
+                                if 'response' in response:
+                                    resp_data = response['response']
+                                    user_id = resp_data.get('uuid')
+                                    subscription_url = resp_data.get('subscriptionUrl')
+                                else:
+                                    user_id = response.get('uuid') or response.get('id')
+                                    subscription_url = response.get('subscriptionUrl')
+                            
+                            # Use subscription URL from response if available
+                            if subscription_url:
+                                subscription_links.append(subscription_url)
+                                created_users.append(username)
+                                logger.info(f"Successfully created user: {username} with subscription URL")
+                            else:
+                                # Fallback: try to get subscription link via separate API call
                                 subscription_link = await self._get_subscription_link(username, user_id)
                                 if subscription_link:
                                     subscription_links.append(subscription_link)
                                     created_users.append(username)
-                                    logger.info(f"Successfully created user: {username} (ID: {user_id})")
+                                    logger.info(f"Successfully created user: {username} with subscription link from API")
                                 else:
                                     logger.warning(f"User created but couldn't get subscription link: {username}")
                                     # Still add as created since user was created
-                                    subscription_links.append(f"User created: {username} (ID: {user_id}, no subscription link)")
+                                    subscription_links.append(f"User created: {username} (ID: {user_id})")
                                     created_users.append(username)
-                            else:
-                                logger.warning(f"User created but couldn't get user ID from response: {response}")
-                                # Without ID, we can't set username or get proper subscription link
-                                subscription_links.append(f"User created but no ID available (cannot set username)")
-                                created_users.append(f"user-created-{i}")  # Fallback name
                         
                         except Exception as post_create_error:
                             logger.warning(f"User created but post-creation processing failed for {username}: {post_create_error}")
                             # Still count as success since user was created
-                            subscription_links.append(f"User created but post-processing failed: {username}")
+                            subscription_links.append(f"User created: {username}")
                             created_users.append(username)
                     
                     logger.info(f"Processed user: {username}")
