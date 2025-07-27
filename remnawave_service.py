@@ -29,6 +29,25 @@ class RemnawaveService:
         """Generate random string for user names"""
         return ''.join(random.choices(string.ascii_lowercase + string.digits, k=length))
     
+    def _extract_users_from_response(self, users_response) -> list:
+        """Extract users list from API response handling different response structures"""
+        if not users_response:
+            return []
+            
+        # Handle API response structure: response.users[]
+        users_list = []
+        if hasattr(users_response, 'response') and hasattr(users_response.response, 'users'):
+            users_list = users_response.response.users
+        elif hasattr(users_response, 'users'):
+            users_list = users_response.users
+        elif isinstance(users_response, dict):
+            if 'response' in users_response and 'users' in users_response['response']:
+                users_list = users_response['response']['users']
+            elif 'users' in users_response:
+                users_list = users_response['users']
+        
+        return users_list or []
+    
     def _validate_tag(self, tag: str) -> bool:
         """Validate tag format (only latin characters, snake_case for spaces)"""
         if not tag:
@@ -197,17 +216,17 @@ class RemnawaveService:
             # Try to get user details by various methods
             user_info = None
             
-            # Try by UUID first if available
+            # Try by UUID first if available (GET /api/users/{uuid})
             if user_id:
                 for method_name in ['get_user_by_uuid', 'get_user_by_id', 'get_user']:
                     if hasattr(self.sdk.users, method_name):
                         try:
                             method = getattr(self.sdk.users, method_name)
                             user_info = await method(user_id)
-                            logger.debug(f"Got user info using {method_name}")
+                            logger.debug(f"Got user info using {method_name} for UUID {user_id}")
                             break
                         except Exception as e:
-                            logger.debug(f"Method {method_name} failed for ID {user_id}: {e}")
+                            logger.debug(f"Method {method_name} failed for UUID {user_id}: {e}")
             
             # Try by username if ID methods failed or no ID
             if not user_info:
@@ -298,19 +317,8 @@ class RemnawaveService:
             # Get all users
             users_response = await self.sdk.users.get_all_users_v2()
             
-            # Handle API response structure: response.users[]
-            users_list = []
-            if users_response:
-                if hasattr(users_response, 'response') and hasattr(users_response.response, 'users'):
-                    users_list = users_response.response.users
-                elif hasattr(users_response, 'users'):
-                    users_list = users_response.users
-                elif isinstance(users_response, dict):
-                    if 'response' in users_response and 'users' in users_response['response']:
-                        users_list = users_response['response']['users']
-                    elif 'users' in users_response:
-                        users_list = users_response['users']
-            
+            # Extract users from API response
+            users_list = self._extract_users_from_response(users_response)
             if not users_list:
                 return []
             
@@ -367,19 +375,8 @@ class RemnawaveService:
             # Get all users
             users_response = await self.sdk.users.get_all_users_v2()
             
-            # Handle API response structure: response.users[]
-            users_list = []
-            if users_response:
-                if hasattr(users_response, 'response') and hasattr(users_response.response, 'users'):
-                    users_list = users_response.response.users
-                elif hasattr(users_response, 'users'):
-                    users_list = users_response.users
-                elif isinstance(users_response, dict):
-                    if 'response' in users_response and 'users' in users_response['response']:
-                        users_list = users_response['response']['users']
-                    elif 'users' in users_response:
-                        users_list = users_response['users']
-            
+            # Extract users from API response
+            users_list = self._extract_users_from_response(users_response)
             if not users_list:
                 return 0, 0
             
@@ -433,12 +430,14 @@ class RemnawaveService:
         try:
             users_response = await self.sdk.users.get_all_users_v2()
             
-            if not users_response or not users_response.users:
+            # Extract users from API response
+            users_list = self._extract_users_from_response(users_response)
+            if not users_list:
                 return {'total': 0, 'active': 0, 'used': 0}
             
             stats = {'total': 0, 'active': 0, 'used': 0}
             
-            for user in users_response.users:
+            for user in users_list:
                 username = getattr(user, 'username', '')
                 
                 if username.startswith(Config.DEFAULT_UUID_PREFIX):
@@ -449,11 +448,16 @@ class RemnawaveService:
                         if user_tag == tag:
                             stats['total'] += 1
                             
-                            used_traffic = getattr(user, 'used_traffic', 0)
-                            traffic_limit = getattr(user, 'traffic_limit', 0)
-                            is_disabled = getattr(user, 'disabled', False)
+                            # Use correct API field names
+                            status = getattr(user, 'status', 'ACTIVE')
+                            used_traffic = getattr(user, 'usedTrafficBytes', 0)
+                            traffic_limit = getattr(user, 'trafficLimitBytes', 0)
                             
-                            if is_disabled or used_traffic >= traffic_limit:
+                            # Check if user is "used" based on status and traffic
+                            is_used = (status != 'ACTIVE' or 
+                                     (traffic_limit > 0 and used_traffic >= traffic_limit))
+                            
+                            if is_used:
                                 stats['used'] += 1
                             else:
                                 stats['active'] += 1
