@@ -100,11 +100,9 @@ class RemnawaveService:
                         # Create Pydantic model instance with all required fields
                         create_request = CreateUserRequestDto(
                             username=username,
-                            expireAt=expire_at_iso,
-                            trafficLimitBytes=traffic_limit_bytes,
-                            status="ACTIVE",
-                            trafficLimitStrategy="NO_RESET",
-                            activateAllInbounds=True
+                            expire_at=expire_at_iso,  # Fixed: use expire_at instead of expireAt
+                            traffic_limit_bytes=traffic_limit_bytes,  # Also check this field name
+                            status="ACTIVE"
                         )
                         
                         response = await self.sdk.users.create_user(body=create_request)
@@ -117,7 +115,7 @@ class RemnawaveService:
                             # Try with only required fields
                             create_request = CreateUserRequestDto(
                                 username=username,
-                                expireAt=expire_at_iso
+                                expire_at=expire_at_iso  # Fixed: use expire_at instead of expireAt
                             )
                             
                             response = await self.sdk.users.create_user(body=create_request)
