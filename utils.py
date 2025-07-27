@@ -54,14 +54,14 @@ class FileManager:
     
     async def save_subscription_file(self, tag: str, subscription_links: List[str]) -> Optional[str]:
         """
-        Save subscription links to a file and return the file URL
+        Save subscription links to a file and return the file path
         
         Args:
             tag: Campaign tag
             subscription_links: List of subscription URLs
             
         Returns:
-            File URL or None if failed
+            File path or None if failed
         """
         try:
             # Ensure directory exists and is writable
@@ -112,11 +112,9 @@ class FileManager:
                 logger.error(f"Failed to save subscription file after 3 attempts")
                 return None
             
-            # Return file URL (you would implement actual file upload to your server here)
-            file_url = f"{Config.SUBSCRIPTION_FILE_BASE_URL}{filename}"
-            
+            # Return file path for Telegram bot to send as attachment
             logger.info(f"Saved subscription file: {filepath}")
-            return file_url
+            return filepath
             
         except Exception as e:
             logger.error(f"Failed to save subscription file: {str(e)}")

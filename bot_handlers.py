@@ -3,7 +3,9 @@ Telegram Bot Handlers Module
 """
 
 import logging
+import os
 import re
+from functools import wraps
 from typing import Dict, Any, Optional
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ContextTypes, ConversationHandler
@@ -12,6 +14,31 @@ from remnawave_service import RemnawaveService
 from config import Config
 
 logger = logging.getLogger(__name__)
+
+def admin_required(func):
+    """Decorator to restrict access to admin users only"""
+    @wraps(func)
+    async def wrapper(self, update: Update, context: ContextTypes.DEFAULT_TYPE, *args, **kwargs):
+        user_id = update.effective_user.id
+        username = update.effective_user.username or "Unknown"
+        
+        if not Config.ADMIN_USER_IDS:
+            logger.warning("No admin user IDs configured! Bot is open to everyone.")
+            return await func(self, update, context, *args, **kwargs)
+        
+        if user_id not in Config.ADMIN_USER_IDS:
+            logger.warning(f"Unauthorized access attempt by user {user_id} (@{username})")
+            await update.message.reply_text(
+                "🚫 <b>Доступ запрещен</b>\n\n"
+                "У вас нет прав для использования этого бота.\n"
+                "Обратитесь к администратору.",
+                parse_mode='HTML'
+            )
+            return ConversationHandler.END
+        
+        logger.info(f"Authorized access by admin {user_id} (@{username})")
+        return await func(self, update, context, *args, **kwargs)
+    return wrapper
 
 # Conversation states
 (WAITING_TAG, WAITING_TRAFFIC, WAITING_COUNT, WAITING_CONFIRMATION, WAITING_CONFIRM_DELETE, 
@@ -70,6 +97,7 @@ class BotHandlers:
         ]
         return InlineKeyboardMarkup(keyboard)
     
+    @admin_required
     async def start_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         """Handle /start command"""
         user_id = update.effective_user.id
@@ -363,7 +391,7 @@ class BotHandlers:
         
         try:
             # Create subscriptions
-            subscription_links, file_url = await self.remnawave_service.create_promo_users(
+            subscription_links, file_path = await self.remnawave_service.create_promo_users(
                 tag, traffic_limit, count
             )
             
@@ -376,9 +404,6 @@ class BotHandlers:
                     f"📊 <b>Лимит трафика:</b> {traffic_limit}GB\n"
                     f"✅ <b>Создано подписок:</b> {success_count}/{count}\n\n"
                 )
-                
-                if file_url:
-                    result_text += f"📁 <b>Файл с подписками:</b> <a href='{file_url}'>Скачать</a>\n\n"
                 
                 # Show first few subscription links as examples
                 if len(subscription_links) <= 5:
@@ -397,12 +422,31 @@ class BotHandlers:
                     f"Проверьте логи для подробностей."
                 )
             
+            # Send result message
             await query.edit_message_text(
                 result_text,
                 parse_mode='HTML',
                 reply_markup=self._get_back_to_main_keyboard(),
                 disable_web_page_preview=True
             )
+            
+            # Send file attachment if available and subscriptions were created
+            if success_count > 0 and file_path and os.path.exists(file_path):
+                try:
+                    await update.effective_chat.send_document(
+                        document=open(file_path, 'rb'),
+                        filename=f"subscriptions_{tag}_{success_count}.txt",
+                        caption=f"📁 Файл с {success_count} подписками для кампании '{tag}'"
+                    )
+                    logger.info(f"Sent subscription file as attachment: {file_path}")
+                except Exception as e:
+                    logger.error(f"Failed to send file attachment: {e}")
+                    # Send fallback message with error
+                    await update.effective_chat.send_message(
+                        f"⚠️ Не удалось отправить файл с подписками.\n"
+                        f"Файл сохранен в: <code>{file_path}</code>",
+                        parse_mode='HTML'
+                    )
             
         except Exception as e:
             logger.error(f"Error creating promo campaign: {str(e)}")
@@ -629,6 +673,7 @@ class BotHandlers:
         
         return ConversationHandler.END
     
+    @admin_required
     async def cancel_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         """Handle /cancel command"""
         user_id = update.effective_user.id

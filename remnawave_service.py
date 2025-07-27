@@ -225,10 +225,10 @@ class RemnawaveService:
                     continue
             
             # Generate file with subscription links (use original tag for filename)
-            file_url = await self._generate_subscription_file(tag, subscription_links)
+            file_path = await self._generate_subscription_file(tag, subscription_links)
             
             logger.info(f"Successfully created {len(created_users)} users for tag '{normalized_tag}' (original: '{tag}')")
-            return subscription_links, file_url
+            return subscription_links, file_path
             
         except Exception as e:
             logger.error(f"Error creating promo users: {str(e)}")
@@ -426,10 +426,10 @@ class RemnawaveService:
             return None
     
     async def _generate_subscription_file(self, tag: str, subscription_links: List[str]) -> str:
-        """Generate TXT file with subscription links and return URL"""
+        """Generate TXT file with subscription links and return file path"""
         try:
-            file_url = await self.file_manager.save_subscription_file(tag, subscription_links)
-            return file_url or ""
+            file_path = await self.file_manager.save_subscription_file(tag, subscription_links)
+            return file_path or ""
             
         except Exception as e:
             logger.error(f"Failed to generate subscription file: {str(e)}")

@@ -26,6 +26,25 @@ def _parse_inbound_ids(env_value):
                 
     return ids if ids else ["1"]  # Fallback as string
 
+def _parse_admin_ids(env_value):
+    """Parse admin user IDs from environment variable"""
+    if not env_value:
+        return []
+    
+    ids = []
+    for x in env_value.split(','):
+        x = x.strip()
+        if not x:
+            continue
+        try:
+            user_id = int(x)
+            ids.append(user_id)
+        except ValueError:
+            print(f"Warning: Invalid admin user ID '{x}', skipping...")
+            continue
+                
+    return ids
+
 class Config:
     """Configuration class for the bot"""
     
@@ -45,7 +64,9 @@ class Config:
     
     # Limits and Settings
     MAX_SUBSCRIPTIONS_PER_REQUEST = int(os.getenv('MAX_SUBSCRIPTIONS_PER_REQUEST', '100'))
-    ADMIN_USER_IDS = [int(x.strip()) for x in os.getenv('ADMIN_USER_IDS', '').split(',') if x.strip()]
+    
+    # Security - Admin access control
+    ADMIN_USER_IDS = _parse_admin_ids(os.getenv('ADMIN_USER_IDS', ''))
     
     # Logging
     LOG_LEVEL = os.getenv('LOG_LEVEL', 'INFO')
