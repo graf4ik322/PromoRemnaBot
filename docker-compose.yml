@@ -12,7 +12,7 @@ services:
     
     # Volumes for persistent data
     volumes:
-      - ./subscription_files:/app/subscription_files
+      - ./temp_files:/app/temp_files
       - ./logs:/app/logs
     
     # Network settings
