@@ -105,7 +105,8 @@ class RemnawaveService:
                             traffic_limit_bytes=traffic_limit_bytes,  # Optional
                             traffic_limit_strategy=TrafficLimitStrategy.NO_RESET,  # Optional enum
                             activate_all_inbounds=True,  # Optional 
-                            status=UserStatus.ACTIVE  # Optional enum
+                            status=UserStatus.ACTIVE,  # Optional enum
+                            tag=tag  # Add the tag parameter to the user
                         )
                         
                         response = await self.sdk.users.create_user(body=create_request)
@@ -169,23 +170,17 @@ class RemnawaveService:
                                     user_id = response.get('uuid') or response.get('id')
                                     subscription_url = response.get('subscriptionUrl')
                             
-                            # Use subscription URL from response if available
-                            if subscription_url:
-                                subscription_links.append(subscription_url)
+                            # Always get real subscription URL via separate API call using shortUuid
+                            real_subscription_url = await self._get_real_subscription_url(username, user_id, response)
+                            if real_subscription_url:
+                                subscription_links.append(real_subscription_url)
                                 created_users.append(username)
-                                logger.info(f"Successfully created user: {username} with subscription URL")
+                                logger.info(f"Successfully created user: {username} with real subscription URL")
                             else:
-                                # Fallback: try to get subscription link via separate API call
-                                subscription_link = await self._get_subscription_link(username, user_id)
-                                if subscription_link:
-                                    subscription_links.append(subscription_link)
-                                    created_users.append(username)
-                                    logger.info(f"Successfully created user: {username} with subscription link from API")
-                                else:
-                                    logger.warning(f"User created but couldn't get subscription link: {username}")
-                                    # Still add as created since user was created
-                                    subscription_links.append(f"User created: {username} (ID: {user_id})")
-                                    created_users.append(username)
+                                logger.warning(f"User created but couldn't get real subscription URL: {username}")
+                                # Still add as created since user was created
+                                subscription_links.append(f"User created: {username} (no subscription URL)")
+                                created_users.append(username)
                         
                         except Exception as post_create_error:
                             logger.warning(f"User created but post-creation processing failed for {username}: {post_create_error}")
@@ -208,6 +203,56 @@ class RemnawaveService:
         except Exception as e:
             logger.error(f"Error creating promo users: {str(e)}")
             raise
+    
+    async def _get_real_subscription_url(self, username: str, user_id: str = None, user_response = None) -> Optional[str]:
+        """Get real subscription URL using subscription info API"""
+        try:
+            # Extract shortUuid from user response
+            short_uuid = None
+            
+            if user_response:
+                if hasattr(user_response, 'response'):
+                    resp_data = user_response.response
+                    if hasattr(resp_data, 'short_uuid'):
+                        short_uuid = resp_data.short_uuid
+                    elif hasattr(resp_data, 'shortUuid'):
+                        short_uuid = resp_data.shortUuid
+                elif hasattr(user_response, 'short_uuid'):
+                    short_uuid = user_response.short_uuid
+                elif hasattr(user_response, 'shortUuid'):
+                    short_uuid = user_response.shortUuid
+                elif isinstance(user_response, dict):
+                    if 'response' in user_response:
+                        resp_data = user_response['response']
+                        short_uuid = resp_data.get('short_uuid') or resp_data.get('shortUuid')
+                    else:
+                        short_uuid = user_response.get('short_uuid') or user_response.get('shortUuid')
+            
+            if not short_uuid:
+                logger.warning(f"Could not extract shortUuid for user {username}")
+                return None
+            
+            # Try to get subscription info using shortUuid
+            if hasattr(self.sdk, 'subscription') and hasattr(self.sdk.subscription, 'get_subscription_info'):
+                try:
+                    subscription_info = await self.sdk.subscription.get_subscription_info(short_uuid)
+                    if subscription_info and hasattr(subscription_info, 'subscription_url'):
+                        return subscription_info.subscription_url
+                    elif isinstance(subscription_info, dict) and 'subscription_url' in subscription_info:
+                        return subscription_info['subscription_url']
+                except Exception as e:
+                    logger.debug(f"Failed to get subscription info for {short_uuid}: {e}")
+            
+            # If subscription API is not available, construct the URL manually
+            # Based on the pattern: https://sub.edencore.cc/{shortUuid}
+            base_url = Config.REMNAWAVE_BASE_URL.replace('manage.', 'sub.').replace(':3000', '').rstrip('/')
+            real_subscription_url = f"{base_url}/{short_uuid}"
+            logger.info(f"Constructed subscription URL for {username}: {real_subscription_url}")
+            return real_subscription_url
+            
+        except Exception as e:
+            logger.error(f"Failed to get real subscription URL for {username}: {str(e)}")
+            return None
     
     async def _get_subscription_link(self, username: str, user_id: str = None) -> Optional[str]:
         """Get subscription link for user"""
