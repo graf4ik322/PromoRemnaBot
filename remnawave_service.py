@@ -110,9 +110,10 @@ class RemnawaveService:
                 
                 try:
                     # Based on API documentation, username and expireAt are required fields
-                    # Generate a proper expiration date (e.g., 30 days from now)
-                    expire_date = datetime.now(timezone.utc) + timedelta(days=30)
+                    # Set expiration to far future (practically unlimited) - 10 years from now
+                    expire_date = datetime.now(timezone.utc) + timedelta(days=365*10)  # 10 years
                     expire_at_iso = expire_date.isoformat()
+                    logger.info(f"Setting expiration to: {expire_date.strftime('%Y-%m-%d')} (10 years, practically unlimited)")
                     
                     # Based on SDK source code analysis: create_user expects a Pydantic body
                     # Method signature: create_user(body: CreateUserRequestDto) -> UserResponseDto
@@ -133,7 +134,7 @@ class RemnawaveService:
                             tag=normalized_tag  # Tag for user categorization (UPPERCASE)
                         )
                         
-                        logger.info(f"Creating user {username} with tag='{normalized_tag}', traffic_limit={traffic_limit_bytes} bytes")
+                        logger.info(f"Creating user {username} with tag='{normalized_tag}', traffic_limit={traffic_limit_gb}GB ({traffic_limit_bytes} bytes), expiry={expire_date.strftime('%Y-%m-%d')}")
                         
                         response = await self.sdk.users.create_user(body=create_request)
                         logger.info(f"User creation succeeded with full parameters")
